@@ -10,6 +10,7 @@ import { Plan } from './screens/Plan';
 import { Performance } from './screens/Performance';
 import { Profile } from './screens/Profile';
 import { LabelScanner } from './screens/LabelScanner';
+import { FoodDirectory } from './screens/FoodDirectory';
 import { Navigation } from './components/Navigation';
 
 const AppContent = () => {
@@ -21,7 +22,7 @@ const AppContent = () => {
   }
 
   if (!state.isOnboardingComplete) {
-    return <Onboarding />;
+    return <Onboarding onNavigate={setCurrentScreen} />;
   }
 
   const renderScreen = () => {
@@ -31,6 +32,7 @@ const AppContent = () => {
       case 'fasting': return <Fasting />;
       case 'plan': return <Plan />;
       case 'scanner': return <LabelScanner />;
+      case 'directory': return <FoodDirectory onOpenScanner={() => setCurrentScreen('scanner')} />;
       case 'performance': return <Performance />;
       case 'profile': return <Profile />;
       default: return <Dashboard onNavigate={setCurrentScreen} />;
@@ -41,13 +43,13 @@ const AppContent = () => {
     <div className="flex flex-col min-h-screen bg-background-light font-sans text-slate-900">
       {renderScreen()}
       <Navigation currentScreen={currentScreen} setCurrentScreen={setCurrentScreen} />
-      
+
       {/* Cloud Sync Global Indicator */}
       {state.user.isSyncing && (
-          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-primary/90 backdrop-blur text-white px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-2xl animate-in slide-in-from-top duration-300">
-            <span className="material-symbols-outlined text-sm animate-spin">sync</span>
-            Respaldando en Nube...
-          </div>
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-primary/90 backdrop-blur text-white px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-2xl animate-in slide-in-from-top duration-300">
+          <span className="material-symbols-outlined text-sm animate-spin">sync</span>
+          Respaldando en Nube...
+        </div>
       )}
     </div>
   );

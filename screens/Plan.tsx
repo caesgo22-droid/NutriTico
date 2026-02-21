@@ -39,28 +39,66 @@ export const Plan: React.FC = () => {
   const allEquivalencies = useMemo(() => {
     const combined = { ...equivalencies };
     state.customFoods.forEach(food => {
-        // Intentamos deducir la categoría si no está marcada o simplemente usar la que eligió el usuario en el escáner
-        // Por simplicidad, los custom foods guardan su categoría en la porción o metadata.
-        // Aquí asumimos que están registrados en la categoría que el usuario eligió al escanear.
-        // Pero como equivalencies es estático, necesitamos una lógica dinámica:
-        Object.keys(combined).forEach(cat => {
-            if (food.portion.includes(`(${cat})`)) {
-                if (!combined[cat].find(f => f.id === food.id)) {
-                    combined[cat] = [food, ...combined[cat]];
-                }
-            }
-        });
+      // Intentamos deducir la categoría si no está marcada o simplemente usar la que eligió el usuario en el escáner
+      // Por simplicidad, los custom foods guardan su categoría en la porción o metadata.
+      // Aquí asumimos que están registrados en la categoría que el usuario eligió al escanear.
+      // Pero como equivalencies es estático, necesitamos una lógica dinámica:
+      Object.keys(combined).forEach(cat => {
+        if (food.portion.includes(`(${cat})`)) {
+          if (!combined[cat].find(f => f.id === food.id)) {
+            combined[cat] = [food, ...combined[cat]];
+          }
+        }
+      });
     });
     return combined;
   }, [state.customFoods]);
 
   const getMealSelections = (meal: string) => (state.weeklyPlan[selectedDay]?.[meal] || {});
 
+  // Lógica de Vigencia de Plan
+  const { currentWeek, isExpired } = useMemo(() => {
+    const joined = new Date(state.profile.joinedAt);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - joined.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const weeksPassed = Math.floor(diffDays / 7) + 1;
+
+    return {
+      currentWeek: weeksPassed,
+      isExpired: weeksPassed > 4
+    };
+  }, [state.profile.joinedAt]);
+
   return (
     <div className="flex-1 overflow-y-auto pb-24 bg-background-light no-scrollbar">
       <header className="sticky top-0 z-40 bg-white border-b border-primary/10 p-4 space-y-4">
-        <h1 className="text-xl font-bold text-primary">Plan de Alimentación</h1>
-        <div className="flex justify-between bg-slate-100 p-1 rounded-2xl">
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-bold text-primary">Plan de Alimentación</h1>
+          <button className="text-[10px] font-black uppercase bg-primary/10 text-primary px-3 py-1.5 rounded-full flex items-center gap-1">
+            <span className="material-symbols-outlined text-[14px]">support_agent</span>
+            Nutricionista
+          </button>
+        </div>
+
+        {/* Panel de Vigencia del Plan */}
+        <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-inner ${isExpired ? 'bg-orange-50 border-orange-100' : 'bg-slate-50 border-slate-100'}`}>
+          <div>
+            <p className={`text-[10px] font-bold uppercase tracking-widest ${isExpired ? 'text-orange-400' : 'text-slate-400'}`}>Semana Activa</p>
+            <div className="flex items-center gap-2 mt-1">
+              <div className={`w-2 h-2 rounded-full ${isExpired ? 'bg-orange-500' : 'bg-accent-lime animate-pulse'}`}></div>
+              <p className={`font-black text-sm ${isExpired ? 'text-orange-600' : 'text-slate-700'}`}>
+                {isExpired ? 'Plan Expirado' : `Ciclo ${currentWeek} de 4 (Vigente)`}
+              </p>
+            </div>
+          </div>
+          <button className={`border shadow-sm p-2 rounded-xl flex flex-col items-center ${isExpired ? 'bg-orange-500 border-orange-600 text-white' : 'bg-white border-primary/10 text-primary'}`}>
+            <span className="material-symbols-outlined text-sm">{isExpired ? 'warning' : 'update'}</span>
+            <span className="text-[8px] font-black uppercase mt-1">Re-evaluar</span>
+          </button>
+        </div>
+
+        <div className="flex justify-between bg-slate-100 p-1 rounded-2xl overflow-x-auto no-scrollbar">
           {days.map((d, i) => (
             <button key={i} onClick={() => setSelectedDay(i)} className={`w-10 h-10 rounded-xl font-bold text-sm ${selectedDay === i ? 'bg-primary text-white shadow-lg' : 'text-slate-400'}`}>
               {d}
@@ -73,80 +111,80 @@ export const Plan: React.FC = () => {
         {state.activeMeals.map((meal) => (
           <div key={meal} className="bg-white rounded-3xl p-6 shadow-sm border border-primary/5 space-y-4">
             <div className="flex justify-between items-center">
-                <h3 className="font-bold text-primary flex items-center gap-2">
-                    <span className="material-symbols-outlined">restaurant</span>
-                    {meal}
-                </h3>
-                <span className="text-[10px] font-bold text-slate-400 uppercase">{state.mealTimes[meal]}</span>
+              <h3 className="font-bold text-primary flex items-center gap-2">
+                <span className="material-symbols-outlined">restaurant</span>
+                {meal}
+              </h3>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">{state.mealTimes[meal]}</span>
             </div>
-            
+
             <div className="flex flex-wrap gap-2">
-                {Object.keys(allEquivalencies).map(group => (
-                    <button 
-                        key={group} 
-                        onClick={() => setActiveModal({ meal, group })}
-                        className="text-[10px] font-bold uppercase px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-slate-600 hover:border-primary/20"
-                    >
-                        + {group}
-                    </button>
-                ))}
+              {Object.keys(allEquivalencies).map(group => (
+                <button
+                  key={group}
+                  onClick={() => setActiveModal({ meal, group })}
+                  className="text-[10px] font-bold uppercase px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-slate-600 hover:border-primary/20"
+                >
+                  + {group}
+                </button>
+              ))}
             </div>
 
             <ul className="space-y-2 border-t border-slate-50 pt-4">
-                {Object.entries(getMealSelections(meal)).map(([group, items]) => (
-                    Object.entries(items as object).map(([id, qty]) => {
-                        const item = allEquivalencies[group]?.find(f => f.id === id);
-                        return item ? (
-                            <li key={id} className="flex justify-between text-xs font-bold text-slate-700 animate-in fade-in">
-                                <span className="flex items-center gap-1">
-                                    {item.isCustom && <span className="material-symbols-outlined text-[10px] text-accent-lime">star</span>}
-                                    {qty} {item.portion.replace(/\(.*\)/, '')} {item.name}
-                                </span>
-                                <span className="text-primary">{Math.round(item.calories * qty)} kcal</span>
-                            </li>
-                        ) : null;
-                    })
-                ))}
+              {Object.entries(getMealSelections(meal)).map(([group, items]) => (
+                Object.entries(items as object).map(([id, qty]) => {
+                  const item = allEquivalencies[group]?.find(f => f.id === id);
+                  return item ? (
+                    <li key={id} className="flex justify-between text-xs font-bold text-slate-700 animate-in fade-in">
+                      <span className="flex items-center gap-1">
+                        {item.isCustom && <span className="material-symbols-outlined text-[10px] text-accent-lime">star</span>}
+                        {qty} {item.portion.replace(/\(.*\)/, '')} {item.name}
+                      </span>
+                      <span className="text-primary">{Math.round(item.calories * qty)} kcal</span>
+                    </li>
+                  ) : null;
+                })
+              ))}
             </ul>
           </div>
         ))}
       </div>
 
       {activeModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center p-4">
-              <div className="bg-white w-full max-w-md rounded-t-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom duration-300">
-                  <div className="flex justify-between items-center">
-                    <div>
-                        <h2 className="text-lg font-bold text-primary">Elegir {activeModal.group}</h2>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Incluyendo tus alimentos escaneados</p>
-                    </div>
-                    <button onClick={() => setActiveModal(null)} className="p-2 bg-slate-100 rounded-full">
-                        <span className="material-symbols-outlined">close</span>
-                    </button>
-                  </div>
-                  <div className="space-y-3 max-h-80 overflow-y-auto no-scrollbar">
-                    {allEquivalencies[activeModal.group].map(item => {
-                        const qty = state.weeklyPlan[selectedDay]?.[activeModal.meal]?.[activeModal.group]?.[item.id] || 0;
-                        return (
-                            <div key={item.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${item.isCustom ? 'bg-primary/5 border-primary/20' : 'bg-slate-50 border-slate-100'}`}>
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-1">
-                                        <p className="font-bold text-slate-700">{item.name}</p>
-                                        {item.isCustom && <span className="text-[8px] bg-primary text-white px-1.5 rounded-full font-black uppercase">Mío</span>}
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{item.portion.replace(/\(.*\)/, '')}</p>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <button onClick={() => actions.updatePlan(selectedDay, activeModal.meal, activeModal.group, item.id, qty - 1)} className="size-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center shadow-sm">-</button>
-                                    <span className="font-bold text-primary tabular-nums">{qty}</span>
-                                    <button onClick={() => actions.updatePlan(selectedDay, activeModal.meal, activeModal.group, item.id, qty + 1)} className="size-8 bg-primary text-white rounded-lg flex items-center justify-center shadow-lg">+</button>
-                                </div>
-                            </div>
-                        );
-                    })}
-                  </div>
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-t-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom duration-300">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-bold text-primary">Elegir {activeModal.group}</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Incluyendo tus alimentos escaneados</p>
               </div>
+              <button onClick={() => setActiveModal(null)} className="p-2 bg-slate-100 rounded-full">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="space-y-3 max-h-80 overflow-y-auto no-scrollbar">
+              {allEquivalencies[activeModal.group].map(item => {
+                const qty = state.weeklyPlan[selectedDay]?.[activeModal.meal]?.[activeModal.group]?.[item.id] || 0;
+                return (
+                  <div key={item.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${item.isCustom ? 'bg-primary/5 border-primary/20' : 'bg-slate-50 border-slate-100'}`}>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <p className="font-bold text-slate-700">{item.name}</p>
+                        {item.isCustom && <span className="text-[8px] bg-primary text-white px-1.5 rounded-full font-black uppercase">Mío</span>}
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">{item.portion.replace(/\(.*\)/, '')}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => actions.updatePlan(selectedDay, activeModal.meal, activeModal.group, item.id, qty - 1)} className="size-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center shadow-sm">-</button>
+                      <span className="font-bold text-primary tabular-nums">{qty}</span>
+                      <button onClick={() => actions.updatePlan(selectedDay, activeModal.meal, activeModal.group, item.id, qty + 1)} className="size-8 bg-primary text-white rounded-lg flex items-center justify-center shadow-lg">+</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        </div>
       )}
     </div>
   );

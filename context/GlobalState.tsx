@@ -88,11 +88,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!stateRef.current.user.id) return;
       setState(prev => ({ ...prev, user: { ...prev.user, isSyncing: true } }));
       try {
-        await setDoc(doc(db, "users", stateRef.current.user.id), stateRef.current, { merge: true });
-      } catch (e) {
-        console.error("Firebase Sync Error", e);
+        const setDocPromise = setDoc(doc(db, "users", stateRef.current.user.id), stateRef.current, { merge: true });
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_EXCEEDED')), 8000));
+        await Promise.race([setDocPromise, timeoutPromise]);
+      } catch (e: any) {
+        if (e.message === 'TIMEOUT_EXCEEDED') {
+          console.error("Firebase Sync Falló: Tiempo de espera agotado (Mala conexión).");
+        } else {
+          console.error("Firebase Sync Falló:", e);
+        }
+      } finally {
+        setState(prev => ({ ...prev, user: { ...prev.user, isSyncing: false, lastSync: new Date().toISOString() } }));
       }
-      setState(prev => ({ ...prev, user: { ...prev.user, isSyncing: false, lastSync: new Date().toISOString() } }));
     },
     updateProfile: (data) => setState(prev => ({ ...prev, profile: { ...prev.profile, ...data } })),
     setTrainingIntensity: (i) => setState(prev => ({ ...prev, trainingIntensity: i })),

@@ -9,6 +9,7 @@ interface NavigationProps {
 export const Navigation: React.FC<NavigationProps> = ({ currentScreen, setCurrentScreen }) => {
   const navItems = [
     { id: 'dashboard', label: 'Inicio', icon: 'home' },
+    { id: 'directory', label: 'Directorio', icon: 'menu_book' },
     { id: 'scanner', label: 'Escáner', icon: 'biotech' },
     { id: 'plan', label: 'Plan', icon: 'calendar_month' },
     { id: 'diary', label: 'Diario', icon: 'history_edu' },
@@ -23,14 +24,13 @@ export const Navigation: React.FC<NavigationProps> = ({ currentScreen, setCurren
           <button
             key={item.id}
             onClick={() => setCurrentScreen(item.id)}
-            className={`flex flex-col items-center gap-1 group transition-colors min-w-[50px] ${
-              currentScreen === item.id ? 'text-primary' : 'text-slate-400 hover:text-primary'
-            }`}
+            className={`flex flex-col items-center gap-1 group transition-colors min-w-[45px] sm:min-w-[50px] ${currentScreen === item.id ? 'text-primary' : 'text-slate-400 hover:text-primary'
+              }`}
           >
             <span className={`material-symbols-outlined text-2xl ${currentScreen === item.id ? 'filled' : ''}`}>
               {item.icon}
             </span>
-            <span className="text-[10px] font-bold">{item.label}</span>
+            <span className="text-[9px] sm:text-[10px] font-bold">{item.label}</span>
           </button>
         ))}
       </div>
