@@ -69,10 +69,11 @@ export const consultNutriTico = async (state: AppState, actions: AppActions, use
     }
 };
 
-export const analyzeLabels = async (images: string[], prompt: string): Promise<string> => {
+export const analyzeLabels = async (state: AppState, images: string[], prompt: string): Promise<string> => {
     try {
         const analyzeFn = httpsCallable(functions, 'analyzeLabels');
-        const result = await analyzeFn({ images, prompt });
+        const stateString = JSON.stringify(state);
+        const result = await analyzeFn({ images, prompt, stateString });
         const data = result.data as { result: string };
         return data.result || "No se pudo procesar la imagen.";
     } catch (e) {
@@ -81,10 +82,11 @@ export const analyzeLabels = async (images: string[], prompt: string): Promise<s
     }
 };
 
-export const extractFoodData = async (images: string[]): Promise<Partial<FoodItem> | null> => {
+export const extractFoodData = async (state: AppState, images: string[]): Promise<Partial<FoodItem> | null> => {
     try {
         const extractFn = httpsCallable(functions, 'extractFoodData');
-        const result = await extractFn({ images });
+        const stateString = JSON.stringify(state);
+        const result = await extractFn({ images, stateString });
         const dataStr = (result.data as { data: string }).data;
 
         const data = JSON.parse(dataStr || "{}");
