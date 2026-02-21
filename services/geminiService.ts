@@ -1,24 +1,13 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { functions } from './firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
 
-// Initialize the API client strictly from import.meta.env in Vite
-const apiKey = import.meta.env.VITE_API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
-
-export const getNutritionAdvice = async (userGoal: string, currentMeal: string) => {
+export const getNutritionAdvice = async (prompt: string): Promise<string> => {
   try {
-    // Use gemini-3-flash-preview for basic text advice tasks
-    const model = 'gemini-3-flash-preview';
-
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: `Soy un usuario en Costa Rica. Mi objetivo es ${userGoal}. Estoy comiendo ${currentMeal}. ¿Es esto adecuado? Dame una respuesta breve de 2 lineas.`,
-      config: {
-        systemInstruction: "Eres NutriTico IA, un experto en nutrición deportiva y salud metabólica enfocado en comida costarricense.",
-      }
-    });
-
-    // Directly access .text property from the response
-    return response.text;
+    const consultFn = httpsCallable(functions, 'consultNutriTico');
+    // Para reutilizar el endpoint pasamos un state string vacio (no afectará el query directo)
+    const result = await consultFn({ userQuery: prompt, stateString: "{}" });
+    const data = result.data as { text: string };
+    return data.text || "Hubo un error de conexión con NutriTico IA.";
   } catch (error) {
     console.error("Error fetching Gemini advice:", error);
     return "No se pudo conectar con NutriTico IA en este momento.";
