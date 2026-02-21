@@ -1,0 +1,7 @@
+{
+  "name": "NutriTico IA",
+  "description": "Sport & Health Edition - A personalized nutrition assistant for Costa Rica tailored for metabolic health and high-performance sports.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
