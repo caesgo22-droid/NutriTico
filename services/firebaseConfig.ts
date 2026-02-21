@@ -1,19 +1,16 @@
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-// Archivo de configuración de Firebase
-// Para producción: Reemplaza estos valores con los que te da la consola de Firebase
-// y guárdalos también como Variables de Entorno en Vercel.
-
-export const firebaseConfig = {
-  apiKey: "TU_FIREBASE_API_KEY",
-  authDomain: "tu-app.firebaseapp.com",
-  projectId: "tu-app-id",
-  storageBucket: "tu-app.appspot.com",
-  messagingSenderId: "tu-sender-id",
-  appId: "tu-app-id"
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Nota: Para este prototipo, seguimos usando la simulación de Auth, 
-// pero este archivo es el puente para conectar el SDK real:
-// import { initializeApp } from "firebase/app";
-// import { getFirestore } from "firebase/firestore";
-// import { getAuth } from "firebase/auth";
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
