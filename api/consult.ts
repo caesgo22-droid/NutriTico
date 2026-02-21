@@ -29,15 +29,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         - Metas: ${targets.calories} kcal (P:${targets.protein}g, C:${targets.carbs}g).
         `;
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-pro",
+        const response = await genAI.models.generateContent({
+            model: 'gemini-1.5-pro',
+            contents: userQuery,
+            config: {
+                systemInstruction: systemInstruction,
+            }
         });
-
-        const result = await model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: userQuery }] }],
-            systemInstruction: systemInstruction
-        });
-        const text = result.response.text();
+        const text = response.text || "";
 
         return res.status(200).json({ text, actionTaken: undefined });
     } catch (error: any) {

@@ -11,20 +11,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const state = JSON.parse(stateString || "{}");
         const profileInfo = state.profile ? `Considerar contexto: Atleta ${state.profile.name}, Estrategia ${state.profile.strategy?.join(' + ')}` : "";
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
-            generationConfig: {
-                responseMimeType: "application/json",
-            }
-        });
-
         const parts = images.map((data: string) => ({
             inlineData: { mimeType: 'image/jpeg', data }
         }));
         parts.push({ text: `Analiza la tabla nutricional de este producto y extrae los datos exactos por porción en JSON. Si detectas ingredientes incompatibles con la dieta del usuario, puedes omitirlo o ajustarlo. ${profileInfo}` });
 
-        const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
-        const text = result.response.text();
+        const response = await genAI.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: parts,
+            config: {
+                responseMimeType: "application/json",
+            }
+        });
+        const text = response.text || "{}";
 
         return res.status(200).json({ data: text });
     } catch (error: any) {

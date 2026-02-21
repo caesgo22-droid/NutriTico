@@ -14,20 +14,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ? `\nESTADO DEL ATLETA: ${state.profile.name}. Estrategia: ${state.profile.strategy?.join(' + ')}. Alergias: ${state.profile.medicalConditions?.join(', ')}.`
             : "";
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-pro"
-        });
-
         const parts = images.map((data: string) => ({
             inlineData: { mimeType: 'image/jpeg', data }
         }));
         parts.push({ text: prompt });
 
-        const result = await model.generateContent({
-            contents: [{ role: 'user', parts }],
-            systemInstruction: `Actúa como un Auditor de Calidad Alimentaria y Científico de Datos. Analiza fotos de platos servidos (estimando los carbohidratos netos reales) o etiquetas nutricionales. Ojo Crítico con los ingredientes Ticos. ${profileInfo} SI ES KETO, sé extemadamente crítico con harinas nativas (pinto, plátano, etc).`
+        const response = await genAI.models.generateContent({
+            model: 'gemini-1.5-pro',
+            contents: parts,
+            config: {
+                systemInstruction: `Actúa como un Auditor de Calidad Alimentaria y Científico de Datos. Analiza fotos de platos servidos (estimando los carbohidratos netos reales) o etiquetas nutricionales. Ojo Crítico con los ingredientes Ticos. ${profileInfo} SI ES KETO, sé extemadamente crítico con harinas nativas (pinto, plátano, etc).`
+            }
         });
-        const text = result.response.text();
+        const text = response.text || "";
 
         return res.status(200).json({ result: text });
     } catch (error: any) {
