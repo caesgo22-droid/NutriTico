@@ -17,10 +17,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         parts.push({ text: `Analiza la tabla nutricional de este producto y extrae los datos exactos por porción en JSON. Si detectas ingredientes incompatibles con la dieta del usuario, puedes omitirlo o ajustarlo. ${profileInfo}` });
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-1.5-pro', // Subimos a Pro para manejo de etiquetas ruidosas (Bimbo Case)
             contents: parts,
             config: {
                 responseMimeType: "application/json",
+                systemInstruction: `Extrae datos nutricionales estrictos. 
+                NO leas slogans, recetas ni publicidad. Busca la TABLA NUTRICIONAL.
+                Esquema JSON: { 
+                  "name": "Nombre exacto", 
+                  "portion": "1 pieza", 
+                  "calories": num, 
+                  "baseAmount": num, 
+                  "unit": "g|ml|pieza", 
+                  "p": num, "c": num, "f": num, "fiber": num 
+                } 
+                Si el envase detectado es de Costa Rica o Centroamérica, valida los valores basándote en estándares locales. ${profileInfo}`
             }
         });
         const text = response.text || "{}";

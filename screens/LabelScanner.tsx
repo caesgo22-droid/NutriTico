@@ -4,6 +4,47 @@ import { useGlobalState } from '../context/GlobalState';
 import { analyzeLabels, extractFoodData } from '../services/aiCore';
 import { FoodItem } from '../types';
 
+// Helper de compresión para evitar Error 413 (Vercel Payload Limit)
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1280; // Resolución óptima para OCR de Gemini
+        const MAX_HEIGHT = 1280;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // JPEG al 70% de calidad reduce el tamaño masivamente manteniendo legibilidad
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        resolve(dataUrl.split(',')[1]);
+      };
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 export const LabelScanner: React.FC = () => {
   const { state, actions } = useGlobalState();
   const [productA, setProductA] = useState<string[]>([]);
@@ -16,16 +57,20 @@ export const LabelScanner: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [targetProduct, setTargetProduct] = useState<'A' | 'B' | null>(null);
 
-  const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && targetProduct) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        if (targetProduct === 'A') setProductA(prev => [...prev, base64]);
-        else setProductB(prev => [...prev, base64]);
-      };
-      reader.readAsDataURL(file);
+      setLoading(true);
+      try {
+        const compressedBase64 = await compressImage(file);
+        if (targetProduct === 'A') setProductA(prev => [...prev, compressedBase64]);
+        else setProductB(prev => [...prev, compressedBase64]);
+      } catch (err) {
+        console.error("Error compressing image:", err);
+        alert("No se pudo procesar la imagen. Verifica el formato.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

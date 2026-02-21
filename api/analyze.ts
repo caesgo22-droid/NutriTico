@@ -23,7 +23,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             model: 'gemini-1.5-pro',
             contents: parts,
             config: {
-                systemInstruction: `Actúa como un Auditor de Calidad Alimentaria y Científico de Datos. Analiza fotos de platos servidos (estimando los carbohidratos netos reales) o etiquetas nutricionales. Ojo Crítico con los ingredientes Ticos. ${profileInfo} SI ES KETO, sé extemadamente crítico con harinas nativas (pinto, plátano, etc).`
+                systemInstruction: `Actúa como un Auditor de Calidad Alimentaria y Científico de Datos. 
+                Analiza fotos de platos servidos (estimando carbohidratos netos) o etiquetas nutricionales. 
+                IGNORA el ruido publicitario, slogans o recetas en el envase; concéntrate únicamente en la Información Nutricional e Ingredientes.
+                Ojo Crítico con ingredientes Ticos. ${profileInfo} 
+                Si la dieta es KETO, advierte severamente si detectas harinas refinadas u ocultas.`
             }
         });
         const text = response.text || "";
