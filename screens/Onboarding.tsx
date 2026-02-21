@@ -71,6 +71,29 @@ export const Onboarding: React.FC<{ onNavigate: (screen: string) => void }> = ({
                   <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
                 </div>
               </div>
+
+              <div className="space-y-2 pt-2 border-t border-slate-100 mt-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">¿Cuál es tu enfoque clínico?</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'keto', label: 'Keto', icon: 'bolt' },
+                    { id: 'fasting', label: 'Ayuno', icon: 'timer' },
+                  ].map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        const active = localProfile.strategy.includes(s.id);
+                        if (active) setLocalProfile({ ...localProfile, strategy: localProfile.strategy.filter(x => x !== s.id) });
+                        else setLocalProfile({ ...localProfile, strategy: [...localProfile.strategy, s.id] });
+                      }}
+                      className={`p-4 rounded-xl flex items-center gap-2 text-[10px] font-bold uppercase transition-all ${localProfile.strategy.includes(s.id) ? 'bg-primary text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                    >
+                      <span className="material-symbols-outlined text-sm">{s.icon}</span>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         ) : (

@@ -39,10 +39,19 @@ export interface GroundingSource {
   uri: string;
 }
 
+export interface AIPlanCommand {
+  dayIndex: number;
+  meal: string;
+  group: string;
+  itemId: string;
+  qty: number;
+}
+
 export interface AIResponse {
   text: string;
   sources: GroundingSource[];
   actionTaken?: string;
+  planCommands?: AIPlanCommand[];
 }
 
 export type SelectionsState = Record<string, Record<string, Record<string, number>>>;

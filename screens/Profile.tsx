@@ -63,6 +63,31 @@ export const Profile: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
+
+                            <div className="space-y-3 pt-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Enfoque Nutricional</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        { id: 'keto', label: 'Cetogénica (Keto)', icon: 'bolt' },
+                                        { id: 'fasting', label: 'Ayuno Intermitente', icon: 'timer' },
+                                        { id: 'mediterranean', label: 'Mediterránea', icon: 'Bakery_Dining' }
+                                    ].map(strategy => (
+                                        <button
+                                            key={strategy.id}
+                                            onClick={() => {
+                                                const active = editData.strategy.includes(strategy.id);
+                                                if (active) setEditData({ ...editData, strategy: editData.strategy.filter(s => s !== strategy.id) });
+                                                else setEditData({ ...editData, strategy: [...editData.strategy, strategy.id] });
+                                            }}
+                                            className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${editData.strategy.includes(strategy.id) ? 'bg-primary text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'
+                                                }`}
+                                        >
+                                            <span className="material-symbols-outlined text-sm">{strategy.icon}</span>
+                                            {strategy.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                         <button onClick={handleSave} className="w-full py-5 bg-primary text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all">Guardar Cambios</button>
                         <button onClick={() => setIsEditing(false)} className="w-full text-slate-400 text-xs font-bold uppercase text-center py-2">Cancelar</button>

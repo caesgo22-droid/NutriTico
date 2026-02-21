@@ -14,12 +14,25 @@ export const consultNutriTico = async (state: AppState, actions: AppActions, use
         const data = await response.json();
         const text = data.text || "";
         let actionTaken = undefined;
+        let planCommands = undefined;
 
-        if (text.toLowerCase().includes("plan") && text.toLowerCase().includes("añadid")) {
-            actionTaken = "Acción intentada por IA. (Se requiere implementar function calls estructuradas)";
+        // Extracción de Comandos de Plan [PLAN_UPDATE: [...]]
+        const planMatch = text.match(/\[PLAN_UPDATE:\s*(\[.*?\])\]/s);
+        if (planMatch) {
+            try {
+                planCommands = JSON.parse(planMatch[1]);
+                actionTaken = `Plan Nutricional generado (${planCommands.length} porciones)`;
+            } catch (e) {
+                console.error("Error al parsear comandos de plan:", e);
+            }
         }
 
-        return { text, actionTaken, sources: [] };
+        return {
+            text: text.replace(/\[PLAN_UPDATE:.*?\]/gs, "").trim(),
+            actionTaken,
+            sources: [],
+            planCommands
+        };
     } catch (error: any) {
         console.error("Agent Cloud Error:", error);
         return {

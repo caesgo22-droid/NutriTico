@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useGlobalState } from '../context/GlobalState';
 import { FoodItem } from '../types';
 
 type DirectoryFoodItem = {
@@ -12,7 +13,7 @@ type DirectoryFoodItem = {
     servingSize: string;
 };
 
-// Ojo: Esto idealmente vendría de Firestore, pero lo mockeamos en código para velocidad y que sea instantáneo.
+// Base de datos ampliada de alimentos ticos
 const LOCAL_FOOD_DB: DirectoryFoodItem[] = [
     { id: '1', name: 'Gallo Pinto', calories: 154, protein: 5.5, carbs: 29, fat: 1.5, category: 'Carbohidratos', servingSize: '1/2 taza' },
     { id: '2', name: 'Plátano Maduro Horneado', calories: 110, protein: 1, carbs: 28, fat: 0, category: 'Carbohidratos', servingSize: '1/2 unidad' },
@@ -22,16 +23,36 @@ const LOCAL_FOOD_DB: DirectoryFoodItem[] = [
     { id: '6', name: 'Huevo Entero', calories: 72, protein: 6, carbs: 0.6, fat: 5, category: 'Proteínas', servingSize: '1 unidad' },
     { id: '7', name: 'Aguacate Hass', calories: 160, protein: 2, carbs: 8.5, fat: 14.6, category: 'Grasas', servingSize: '1/2 unidad pequeña' },
     { id: '8', name: 'Queso Turrialba', calories: 85, protein: 5, carbs: 1, fat: 6, category: 'Grasas/Bajas', servingSize: '1 rebanada (30g)' },
-    { id: '9', name: 'Tortilla de Maíz (Casera)', calories: 52, protein: 1.4, carbs: 11, fat: 0.5, category: 'Carbohidratos', servingSize: '1 unidad pequeña' }
+    { id: '9', name: 'Tortilla de Maíz (Casera)', calories: 52, protein: 1.4, carbs: 11, fat: 0.5, category: 'Carbohidratos', servingSize: '1 unidad pequeña' },
+    { id: '10', name: 'Chifrijo (Porción Med)', calories: 350, protein: 18, carbs: 32, fat: 12, category: 'Plato Completo', servingSize: '1 taza servida' },
+    { id: '11', name: 'Olla de Carne (Solo carne y caldo)', calories: 180, protein: 22, carbs: 5, fat: 8, category: 'Proteínas', servingSize: '1 tazón' },
+    { id: '12', name: 'Frijoles Negros (Cocinados)', calories: 110, protein: 7, carbs: 20, fat: 0.5, category: 'Carbohidratos', servingSize: '1/2 taza' },
+    { id: '13', name: 'Picadillo de Chayote con Carne', calories: 125, protein: 9, carbs: 12, fat: 5, category: 'Vegetales/Mix', servingSize: '1/2 taza' }
 ];
 
 export const FoodDirectory: React.FC<{ onOpenScanner: () => void }> = ({ onOpenScanner }) => {
+    const { state } = useGlobalState();
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState<string>('Todos');
 
-    const categories = ['Todos', ...Array.from(new Set(LOCAL_FOOD_DB.map(f => f.category)))];
+    // Unificamos la DB Local con los Custom Foods del usuario
+    const combinedDB = useMemo(() => {
+        const customItems: DirectoryFoodItem[] = state.customFoods.map(f => ({
+            id: f.id,
+            name: f.name,
+            calories: f.calories,
+            protein: f.macros.p,
+            carbs: f.macros.c,
+            fat: f.macros.f,
+            category: 'Mis Productos',
+            servingSize: f.portion
+        }));
+        return [...LOCAL_FOOD_DB, ...customItems];
+    }, [state.customFoods]);
 
-    const filteredFoods = LOCAL_FOOD_DB.filter(food => {
+    const categories = ['Todos', 'Mis Productos', ...Array.from(new Set(combinedDB.map(f => f.category)))];
+
+    const filteredFoods = combinedDB.filter(food => {
         const matchesSearch = food.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = activeCategory === 'Todos' || food.category === activeCategory;
         return matchesSearch && matchesCategory;
@@ -94,10 +115,13 @@ export const FoodDirectory: React.FC<{ onOpenScanner: () => void }> = ({ onOpenS
                 ) : (
                     <div className="space-y-3">
                         {filteredFoods.map(food => (
-                            <div key={food.id} className="bg-white p-5 rounded-3xl border border-primary/5 shadow-sm hover:shadow-md transition-shadow">
+                            <div key={food.id} className={`bg-white p-5 rounded-3xl border shadow-sm hover:shadow-md transition-shadow ${food.category === 'Mis Productos' ? 'border-primary/20 bg-primary/5' : 'border-primary/5'}`}>
                                 <div className="flex justify-between items-start mb-3">
                                     <div>
-                                        <h4 className="font-black text-primary text-base">{food.name}</h4>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-black text-primary text-base">{food.name}</h4>
+                                            {food.category === 'Mis Productos' && <span className="text-[8px] bg-primary text-white px-1.5 py-0.5 rounded-full font-black uppercase">Escaneado</span>}
+                                        </div>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-0.5 rounded-full inline-block mt-1">{food.servingSize}</p>
                                     </div>
                                     <div className="text-right">
@@ -105,9 +129,9 @@ export const FoodDirectory: React.FC<{ onOpenScanner: () => void }> = ({ onOpenS
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl">
+                                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl relative">
                                     <div className="text-center">
-                                        <p className="text-[9px] font-black uppercase text-blue-500">Pro</p>
+                                        <p className="text-[9px] font-black uppercase text-primary">Prot</p>
                                         <p className="font-bold text-slate-700 text-sm">{food.protein}g</p>
                                     </div>
                                     <div className="text-center border-l border-r border-slate-200">
@@ -118,6 +142,17 @@ export const FoodDirectory: React.FC<{ onOpenScanner: () => void }> = ({ onOpenS
                                         <p className="text-[9px] font-black uppercase text-accent-orange">Gras</p>
                                         <p className="font-bold text-slate-700 text-sm">{food.fat}g</p>
                                     </div>
+                                </div>
+
+                                {/* Acción de Personalización */}
+                                <div className="mt-4 flex justify-end">
+                                    <button
+                                        onClick={onOpenScanner}
+                                        className="text-[9px] font-black uppercase flex items-center gap-1 text-primary/60 hover:text-primary transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">edit_note</span>
+                                        Personalizar Marca con Escáner
+                                    </button>
                                 </div>
                             </div>
                         ))}

@@ -28,9 +28,9 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children }) => {
         {children}
       </div>
       {isVisible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[85vw] sm:max-w-[200px] p-3 border border-slate-700 bg-slate-800 text-white text-[11px] font-medium rounded-2xl shadow-2xl z-[100] animate-in fade-in zoom-in duration-200">
+        <div className="fixed sm:absolute bottom-20 sm:bottom-full left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 mb-2 sm:w-max sm:max-w-[200px] p-4 border border-slate-700 bg-slate-800 text-white text-[11px] font-medium rounded-2xl shadow-2xl z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
           <p className="leading-relaxed text-center break-words">{content}</p>
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
+          <div className="hidden sm:block absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
         </div>
       )}
     </div>

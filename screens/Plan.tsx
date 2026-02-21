@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { useGlobalState } from '../context/GlobalState';
-import { FoodItem } from '../types';
+import { FoodItem, AIResponse } from '../types';
+import { consultNutriTico } from '../services/aiCore';
 
 export const equivalencies: Record<string, FoodItem[]> = {
   Harinas: [
@@ -34,6 +35,12 @@ export const Plan: React.FC = () => {
   const { state, actions } = useGlobalState();
   const [selectedDay, setSelectedDay] = useState(0);
   const [activeModal, setActiveModal] = useState<{ meal: string, group: string } | null>(null);
+
+  // NutriChat State
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatQuery, setChatQuery] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatResponse, setChatResponse] = useState<AIResponse | null>(null);
 
   // Mezclamos alimentos genéricos con los personalizados del usuario
   const allEquivalencies = useMemo(() => {
@@ -70,12 +77,34 @@ export const Plan: React.FC = () => {
     };
   }, [state.profile.joinedAt]);
 
+  const handleConsult = async () => {
+    if (!chatQuery.trim()) return;
+    setChatLoading(true);
+    setChatResponse(null);
+    const res = await consultNutriTico(state, actions, chatQuery);
+
+    // EJECUCIÓN DE COMANDOS DE LA IA (Magia estructurada 6.2)
+    if (res.planCommands && res.planCommands.length > 0) {
+      res.planCommands.forEach(cmd => {
+        actions.updatePlan(cmd.dayIndex, cmd.meal, cmd.group, cmd.itemId, cmd.qty);
+      });
+      actions.syncToCloud();
+    }
+
+    setChatResponse(res);
+    setChatLoading(false);
+    setChatQuery('');
+  };
+
   return (
     <div className="flex-1 overflow-y-auto pb-24 bg-background-light no-scrollbar">
       <header className="sticky top-0 z-40 bg-white border-b border-primary/10 p-4 space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold text-primary">Plan de Alimentación</h1>
-          <button className="text-[10px] font-black uppercase bg-primary/10 text-primary px-3 py-1.5 rounded-full flex items-center gap-1">
+          <button
+            onClick={() => setChatOpen(true)}
+            className="text-[10px] font-black uppercase bg-primary text-white px-3 py-1.5 rounded-full flex items-center gap-1 shadow-lg shadow-primary/20 active:scale-95"
+          >
             <span className="material-symbols-outlined text-[14px]">support_agent</span>
             Nutricionista
           </button>
@@ -108,6 +137,19 @@ export const Plan: React.FC = () => {
       </header>
 
       <div className="p-4 space-y-6 max-w-lg mx-auto">
+        {/* Panel explicativo de Metas (Punto 6.6) */}
+        <section className="bg-white/40 border border-primary/10 rounded-3xl p-6 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="material-symbols-outlined text-primary text-sm">info</span>
+            <h4 className="text-[10px] font-black uppercase text-primary tracking-widest">Lógica de Tu Plan</h4>
+          </div>
+          <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+            Este plan ha sido diseñado para un objetivo de **{state.profile.goal}**.
+            Se basa en la ecuación de **Mifflin-St Jeor** considerando tu peso actual de {state.profile.weight}kg
+            y un factor de actividad **{state.profile.activityLevel}**.
+            En las próximas semanas, esperamos una adaptación de tu composición corporal basándonos en tu {state.profile.strategy.includes('keto') ? 'estado cetogénico' : 'balance vitamínico'}.
+          </p>
+        </section>
         {state.activeMeals.map((meal) => (
           <div key={meal} className="bg-white rounded-3xl p-6 shadow-sm border border-primary/5 space-y-4">
             <div className="flex justify-between items-center">
@@ -150,6 +192,69 @@ export const Plan: React.FC = () => {
         ))}
       </div>
 
+      {/* MODAL NUTRICIONISTA (Fase 6.2) */}
+      {chatOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-primary/20 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[4rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom border-t border-primary/10">
+            <header className="p-8 border-b border-slate-50 flex justify-between items-center bg-primary text-white">
+              <div>
+                <h3 className="font-black text-lg">NutriTico IA</h3>
+                <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">Experto en Nutrición Clínica</p>
+              </div>
+              <button onClick={() => setChatOpen(false)} className="size-10 bg-white/10 rounded-full flex items-center justify-center">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+
+            <div className="p-8 space-y-6 min-h-[300px] max-h-[60vh] overflow-y-auto no-scrollbar">
+              {chatResponse ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                  {chatResponse.actionTaken && (
+                    <div className="bg-accent-lime/10 text-accent-lime px-3 py-1.5 rounded-full text-[9px] font-black uppercase inline-block border border-accent-lime/20">
+                      {chatResponse.actionTaken}
+                    </div>
+                  )}
+                  <p className="text-sm font-semibold text-slate-700 leading-relaxed italic">"{chatResponse.text}"</p>
+                  <button onClick={() => setChatResponse(null)} className="text-[10px] text-primary font-black uppercase flex items-center gap-1 pt-4">
+                    <span className="material-symbols-outlined text-[14px]">undo</span>
+                    Hacer otra pregunta
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-40">
+                  <span className="material-symbols-outlined text-6xl">chat_bubble</span>
+                  <p className="text-xs font-bold text-slate-500">¿Deseas que te genere un plan nutricional o que cambie algún alimento?</p>
+                </div>
+              )}
+
+              {chatLoading && (
+                <div className="flex items-center gap-2 text-primary animate-pulse">
+                  <span className="material-symbols-outlined animate-spin">sync</span>
+                  <span className="text-[10px] font-black uppercase">Analizando tus macros...</span>
+                </div>
+              )}
+            </div>
+
+            <div className="p-8 bg-slate-50 border-t border-slate-100">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Generame el plan de hoy..."
+                  value={chatQuery}
+                  onChange={e => setChatQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleConsult()}
+                  className="flex-1 bg-white border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold shadow-inner outline-none focus:border-primary/30"
+                />
+                <button onClick={handleConsult} disabled={chatLoading} className="size-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all">
+                  <span className="material-symbols-outlined">send</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modales de Selección Manual (Mantenemos por seguridad) */}
       {activeModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-t-[3rem] p-8 space-y-6 animate-in slide-in-from-bottom duration-300">

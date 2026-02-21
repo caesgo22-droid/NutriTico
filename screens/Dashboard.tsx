@@ -73,27 +73,36 @@ export const Dashboard: React.FC<{ onNavigate: (s: string) => void }> = ({ onNav
             </header>
 
             <div className="p-6 space-y-6 max-w-lg mx-auto">
-                {/* Dashboard Sync Hero */}
+                {/* Dashboard Sync Hero con BMI y Peso */}
                 <section className="bg-primary p-8 rounded-[3rem] shadow-2xl shadow-primary/20 relative overflow-hidden">
                     <div className="absolute top-0 right-0 size-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
                     <div className="relative z-10 space-y-6">
                         <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em]">Resumen Metabólico</p>
-                                <h2 className="text-3xl font-black text-white mt-1 tabular-nums">
-                                    {Math.round(stats.cals)} <span className="text-sm font-normal opacity-50">kcal</span>
-                                </h2>
+                            <div className="flex gap-4">
+                                <div className="bg-white/10 p-3 rounded-2xl border border-white/10">
+                                    <p className="text-white/40 text-[8px] font-black uppercase tracking-widest">Peso Actual</p>
+                                    <p className="text-2xl font-black text-white mt-1">{state.profile.weight}<span className="text-[10px] opacity-50 ml-1">kg</span></p>
+                                </div>
+                                <div className="bg-white/10 p-3 rounded-2xl border border-white/10">
+                                    <p className="text-white/40 text-[8px] font-black uppercase tracking-widest">IMC (BMI)</p>
+                                    <p className="text-2xl font-black text-white mt-1">
+                                        {(state.profile.weight / (state.profile.height / 100) ** 2).toFixed(1)}
+                                    </p>
+                                </div>
                             </div>
                             <button onClick={() => actions.syncToCloud()} className="size-10 bg-white/10 rounded-2xl flex items-center justify-center text-white hover:bg-white/20 transition-all">
                                 <span className="material-symbols-outlined text-xl">cloud_sync</span>
                             </button>
                         </div>
 
+                        <div className="pt-4 border-t border-white/5">
+                            <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em]">Calorías Consumidas Hoy</p>
+                            <h2 className="text-4xl font-black text-white mt-1 tabular-nums">
+                                {Math.round(stats.cals)} <span className="text-sm font-normal opacity-50">/ {stats.targets.calories} kcal</span>
+                            </h2>
+                        </div>
+
                         <div className="space-y-2">
-                            <div className="flex justify-between text-[9px] font-black text-white/40 uppercase tracking-widest">
-                                <span>Límite Diario</span>
-                                <span>{Math.round((stats.cals / stats.targets.calories) * 100)}%</span>
-                            </div>
                             <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden p-0.5 border border-white/5">
                                 <div className="bg-accent-lime h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(132,204,22,0.5)]" style={{ width: `${Math.min(100, (stats.cals / stats.targets.calories) * 100)}%` }}></div>
                             </div>
