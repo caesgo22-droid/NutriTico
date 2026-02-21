@@ -22,7 +22,6 @@ export const Auth: React.FC = () => {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-      actions.login(email);
     } catch (error: any) {
       console.error("Auth error:", error);
       setErrorMsg(error.message || 'Error de autenticación');
@@ -35,8 +34,7 @@ export const Auth: React.FC = () => {
     setErrorMsg('');
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      actions.login(result.user.email || 'usuario_google');
+      await signInWithPopup(auth, provider);
     } catch (error: any) {
       console.error("Google Auth error:", error);
       setErrorMsg(error.message || 'Error al conectar con Google');

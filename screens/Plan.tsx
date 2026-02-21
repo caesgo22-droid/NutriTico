@@ -85,10 +85,19 @@ export const Plan: React.FC = () => {
 
     // EJECUCIÓN DE COMANDOS DE LA IA (Magia estructurada 6.2)
     if (res.planCommands && res.planCommands.length > 0) {
+      let newPlan = { ...state.weeklyPlan };
       res.planCommands.forEach(cmd => {
-        actions.updatePlan(cmd.dayIndex, cmd.meal, cmd.group, cmd.itemId, cmd.qty);
+        const dp = newPlan[cmd.dayIndex] || {};
+        const mp = dp[cmd.meal] || {};
+        const gp = mp[cmd.group] || {};
+        const ng = { ...gp };
+        if (cmd.qty <= 0) delete ng[cmd.itemId]; else ng[cmd.itemId] = cmd.qty;
+        newPlan = { ...newPlan, [cmd.dayIndex]: { ...dp, [cmd.meal]: { ...mp, [cmd.group]: ng } } };
       });
-      actions.syncToCloud();
+      actions.setWeeklyPlan(newPlan);
+
+      // Forzamos sincronización después de un breve delay para permitir que el stateRef se actualice
+      setTimeout(() => actions.syncToCloud(), 500);
     }
 
     setChatResponse(res);

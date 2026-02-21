@@ -89,6 +89,7 @@ export interface AppState {
     lastSync: string | null;
     isSyncing: boolean;
   };
+  isLoadingData: boolean;
   profile: UserProfile;
   weeklyPlan: WeeklyPlanState;
   activeMeals: string[];
@@ -110,6 +111,7 @@ export interface AppActions {
   logout: () => void;
   updateProfile: (data: Partial<UserProfile>) => void;
   updatePlan: (dayIndex: number, meal: string, group: string, itemId: string, qty: number) => void;
+  setWeeklyPlan: (plan: WeeklyPlanState) => void;
   logConsumption: (itemId: string, factor: number, alternative?: string) => void;
   setFastingStatus: (isActive: boolean, startTime?: string) => void;
   updateFastingTarget: (hours: number) => void;

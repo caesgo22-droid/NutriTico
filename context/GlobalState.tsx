@@ -48,6 +48,7 @@ const defaultProfile: UserProfile = {
 
 const defaultState: AppState = {
   user: { id: null, isAuthenticated: false, lastSync: null, isSyncing: false },
+  isLoadingData: true,
   profile: defaultProfile,
   weeklyPlan: {},
   activeMeals: ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'],
@@ -75,7 +76,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [state]);
 
   const actions: AppActions = {
-    login: (email) => setState(prev => ({ ...prev, user: { ...prev.user, id: btoa(email), isAuthenticated: true } })),
+    login: () => { }, // Ahora manejado por onAuthStateChanged automáticamente
     logout: async () => {
       try {
         await signOut(auth);
@@ -109,6 +110,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (q <= 0) delete ng[id]; else ng[id] = q;
       return { ...prev, weeklyPlan: { ...prev.weeklyPlan, [d]: { ...dp, [m]: { ...mp, [g]: ng } } } };
     }),
+    setWeeklyPlan: (p) => setState(prev => ({ ...prev, weeklyPlan: p })),
     logConsumption: (k, f, a) => setState(prev => ({ ...prev, consumedItems: { ...prev.consumedItems, [k]: { consumed: true, factor: f, alternative: a } } })),
     setFastingStatus: (a, s) => setState(prev => ({ ...prev, fasting: { ...prev.fasting, isActive: a, startTime: s || (a ? new Date().toISOString() : null) } })),
     updateFastingTarget: (h) => setState(prev => ({ ...prev, fasting: { ...prev.fasting, targetHours: h } })),
@@ -148,20 +150,31 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        setState(prev => ({ ...prev, isLoadingData: true }));
         try {
           const docRef = doc(db, "users", user.uid);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            setState(prev => ({ ...prev, ...docSnap.data() as AppState, user: { ...prev.user, id: user.uid, isAuthenticated: true } }));
+            const data = docSnap.data() as AppState;
+            setState({
+              ...data,
+              isLoadingData: false,
+              user: { ...data.user, id: user.uid, isAuthenticated: true, isSyncing: false }
+            });
           } else {
-            setState(prev => ({ ...prev, user: { ...prev.user, id: user.uid, isAuthenticated: true } }));
+            // Usuario nuevo
+            setState(prev => ({
+              ...prev,
+              isLoadingData: false,
+              user: { ...prev.user, id: user.uid, isAuthenticated: true }
+            }));
           }
         } catch (error) {
           console.error("Doc read error", error);
-          setState(prev => ({ ...prev, user: { ...prev.user, id: user.uid, isAuthenticated: true } }));
+          setState(prev => ({ ...prev, isLoadingData: false, user: { ...prev.user, id: user.uid, isAuthenticated: true } }));
         }
       } else {
-        setState(defaultState);
+        setState({ ...defaultState, isLoadingData: false });
       }
     });
     return () => unsubscribe();

@@ -17,18 +17,31 @@ export const consultNutriTico = async (state: AppState, actions: AppActions, use
         let planCommands = undefined;
 
         // Extracción de Comandos de Plan [PLAN_UPDATE: [...]]
-        const planMatch = text.match(/\[PLAN_UPDATE:\s*(\[.*?\])\]/s);
+        // La IA a veces pone bloques de código ```json o espacios extra, limpiamos eso.
+        const planMatch = text.match(/\[PLAN_UPDATE:\s*([\s\S]*?)\]/);
         if (planMatch) {
             try {
-                planCommands = JSON.parse(planMatch[1]);
-                actionTaken = `Plan Nutricional generado (${planCommands.length} porciones)`;
+                let jsonStr = planMatch[1].trim();
+                if (jsonStr.includes("```")) {
+                    jsonStr = jsonStr.replace(/```json|```/g, "").trim();
+                }
+                planCommands = JSON.parse(jsonStr);
+                if (Array.isArray(planCommands)) {
+                    actionTaken = `Plan Nutricional generado (${planCommands.length} porciones)`;
+                }
             } catch (e) {
                 console.error("Error al parsear comandos de plan:", e);
+                // Intento fallback si es un objeto simple y no array
+                try {
+                    const fallback = JSON.parse(planMatch[1].trim());
+                    planCommands = Array.isArray(fallback) ? fallback : [fallback];
+                    actionTaken = "Ajuste de plan detectado";
+                } catch (e2) { }
             }
         }
 
         return {
-            text: text.replace(/\[PLAN_UPDATE:.*?\]/gs, "").trim(),
+            text: text.replace(/\[PLAN_UPDATE:[\s\S]*?\]/gs, "").trim(),
             actionTaken,
             sources: [],
             planCommands

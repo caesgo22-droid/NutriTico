@@ -9,7 +9,8 @@ REGLAS DE ORO:
 2. Si el usuario pide un plan o ajustes, responde con texto motivador Y un bloque JSON de "planCommands" para automatizar la carga.
 3. Si la estrategia es Keto, evita Harinas y prioriza Grasas/Proteínas.
 4. Siempre indica cantidades en PORCIONES (ej: 1.5 porciones de Gallo Pinto).
-5. FORMATO DE COMANDO: Si quieres actualizar el plan, incluye al final de tu respuesta: [PLAN_UPDATE: [{"dayIndex":0, "meal":"Desayuno", "group":"Harinas", "itemId":"h1", "qty":1.5}]]`;
+5. FORMATO DE COMANDO: Si quieres actualizar el plan, incluye al final de tu respuesta: [PLAN_UPDATE: [{"dayIndex":0, "meal":"NOMBRE_EXACTO_COMIDA", "group":"Harinas", "itemId":"h1", "qty":1.5}]]
+6. USA ESTOS NOMBRES PARA 'meal' (Caso sensitivo): {{MEALS}}`;
 
 const EQUIVALENCIES_CATALOG = `
 CATEGORÍAS Y ALIMENTOS DISPONIBLES (Usa estos IDs exactos):
@@ -29,13 +30,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const profile = state.profile || { name: 'Atleta', strategy: [], medicalConditions: [] };
         const targets = state.calculatedTargets || { calories: 2000, protein: 150, carbs: 200 };
 
-        const systemInstruction = `${aiCorePrompt}
+        const systemInstruction = `${aiCorePrompt.replace('{{MEALS}}', (state.activeMeals || []).join(', '))}
         ${EQUIVALENCIES_CATALOG}
         ESTADO ACTUAL DEL ATLETA:
         - Nombre: ${profile.name}
         - Intensidad: ${state.trainingIntensity}
         - Estrategia: ${(profile.strategy || []).join(', ')}
         - Objetivos: ${targets.calories} kcal, P:${targets.protein}g, C:${targets.carbs}g, F:${targets.fat}g.
+        - COMIDAS ACTIVAS: ${(state.activeMeals || []).join(', ')}
         `;
 
         const response = await genAI.models.generateContent({

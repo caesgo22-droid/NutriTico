@@ -17,6 +17,21 @@ const AppContent = () => {
   const { state } = useGlobalState();
   const [currentScreen, setCurrentScreen] = useState('dashboard');
 
+  if (state.isLoadingData) {
+    return (
+      <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-6 text-white">
+        <div className="size-24 bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2.5rem] flex items-center justify-center mb-6 shadow-2xl animate-pulse">
+          <span className="material-symbols-outlined text-5xl text-white">nutrition</span>
+        </div>
+        <h2 className="text-xl font-black tracking-tight mb-2">NutriTico IA</h2>
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
+          <span className="material-symbols-outlined text-xs animate-spin">sync</span>
+          Sincronizando Despensa...
+        </div>
+      </div>
+    );
+  }
+
   if (!state.user.isAuthenticated) {
     return <Auth />;
   }
