@@ -17,26 +17,36 @@ export const consultNutriTico = async (state: AppState, actions: AppActions, use
         let planCommands = undefined;
 
         // Extracción de Comandos de Plan [PLAN_UPDATE: [...]]
-        // La IA a veces pone bloques de código ```json o espacios extra, limpiamos eso.
+        // Blindaje nivel Satélite: toleramos ruidos de formato, markdown y variaciones de la IA.
         const planMatch = text.match(/\[PLAN_UPDATE:\s*([\s\S]*?)\]/);
         if (planMatch) {
             try {
                 let jsonStr = planMatch[1].trim();
-                if (jsonStr.includes("```")) {
-                    jsonStr = jsonStr.replace(/```json|```/g, "").trim();
-                }
-                planCommands = JSON.parse(jsonStr);
-                if (Array.isArray(planCommands)) {
-                    actionTaken = `Plan Nutricional generado (${planCommands.length} porciones)`;
+
+                // Limpieza profunda de ruido de la IA
+                jsonStr = jsonStr
+                    .replace(/```json/g, "")
+                    .replace(/```/g, "")
+                    .replace(/\n/g, " ")
+                    .trim();
+
+                // Intentar parsear el JSON extraído
+                const parsed = JSON.parse(jsonStr);
+                planCommands = Array.isArray(parsed) ? parsed : [parsed];
+
+                if (planCommands.length > 0) {
+                    actionTaken = `Plan Nutricional: ${planCommands.length} ajustes aplicados ✓`;
                 }
             } catch (e) {
-                console.error("Error al parsear comandos de plan:", e);
-                // Intento fallback si es un objeto simple y no array
-                try {
-                    const fallback = JSON.parse(planMatch[1].trim());
-                    planCommands = Array.isArray(fallback) ? fallback : [fallback];
-                    actionTaken = "Ajuste de plan detectado";
-                } catch (e2) { }
+                console.error("Fallo crítico en el Parser del Satélite IA:", e);
+                // Último intento: Buscar algo que parezca un array de objetos
+                const arrayMatch = planMatch[1].match(/\[\s*\{[\s\S]*\}\s*\]/);
+                if (arrayMatch) {
+                    try {
+                        planCommands = JSON.parse(arrayMatch[0]);
+                        actionTaken = "Ajuste de plan recuperado mediante bypass";
+                    } catch (e2) { }
+                }
             }
         }
 

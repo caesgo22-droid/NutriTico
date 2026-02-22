@@ -77,6 +77,8 @@ export const Plan: React.FC = () => {
     };
   }, [state.profile.joinedAt]);
 
+  const [updateNotice, setUpdateNotice] = useState<string | null>(null);
+
   const handleConsult = async () => {
     if (!chatQuery.trim()) return;
     setChatLoading(true);
@@ -96,8 +98,11 @@ export const Plan: React.FC = () => {
       });
       actions.setWeeklyPlan(newPlan);
 
-      // Forzamos sincronización después de un breve delay para permitir que el stateRef se actualice
-      setTimeout(() => actions.syncToCloud(), 500);
+      setUpdateNotice(`${res.planCommands.length} ajustes aplicados al plan`);
+      setTimeout(() => setUpdateNotice(null), 4000);
+
+      // Sincronización inmediata con la nube
+      setTimeout(() => actions.syncToCloud(), 100);
     }
 
     setChatResponse(res);
@@ -146,6 +151,15 @@ export const Plan: React.FC = () => {
       </header>
 
       <div className="p-4 space-y-6 max-w-lg mx-auto">
+        {updateNotice && (
+          <div className="bg-accent-lime text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-between shadow-lg shadow-accent-lime/20 animate-in slide-in-from-top fade-in">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm">check_circle</span>
+              {updateNotice}
+            </div>
+            <span className="text-[8px] opacity-70">Sincronizado</span>
+          </div>
+        )}
         {/* Panel explicativo de Metas (Punto 6.6) */}
         <section className="bg-white/40 border border-primary/10 rounded-3xl p-6 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-3">
