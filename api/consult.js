@@ -31,8 +31,6 @@ module.exports = async function handler(req, res) {
         const targets = state.calculatedTargets || { calories: 2000, protein: 150, carbs: 200, fat: 70 };
         const activeMeals = (state.activeMeals || ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']).join(', ');
 
-        const genAI = new GoogleGenAI({ apiKey });
-
         const systemInstruction = `Eres NutriTico Agent IA - Nutricionista Deportivo experto en Costa Rica.
 TU MISIÓN: Ayudar al atleta a alcanzar su objetivo de "${profile.goal}" siguiendo una estrategia "${(profile.strategy || []).join(', ') || 'Equilibrada'}".
 
@@ -55,13 +53,13 @@ DISTRIBUCIÓN SUGERIDA:
 - Desayuno: 25% kcal | Almuerzo: 35% kcal | Cena: 25% kcal | Meriendas: 15% kcal.
 Calcula las cantidades (qty) basándote en los macros de los alimentos para que sumen los límites del Atleta.`;
 
-        const response = await genAI.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: [{ role: 'user', parts: [{ text: userQuery }] }],
-            config: { systemInstruction }
-        });
+        const genAI = new GoogleGenAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash', systemInstruction });
 
-        const text = response.text || 'Lo siento, no pude generar respuesta. Intenta de nuevo.';
+        const result = await model.generateContent(userQuery);
+        const response = await result.response;
+        const text = response.text();
+
         return res.status(200).json({ text });
 
     } catch (error) {

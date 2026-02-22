@@ -25,26 +25,25 @@ module.exports = async function handler(req, res) {
             ? `\nCONTEXTO: ${profile.name}, Estrategia: ${(profile.strategy || []).join(' + ')}, Condiciones: ${(profile.medicalConditions || []).join(', ')}.`
             : '';
 
-        const genAI = new GoogleGenAI({ apiKey });
+        const genAI = new GoogleGenAI(apiKey);
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            systemInstruction: `Eres un Auditor de Calidad Alimentaria experto en productos centroamericanos.
+Analiza etiquetas nutricionales o fotos de platos servidos.
+IGNORA publicidad, slogans y recetas; enfócate SOLO en Información Nutricional e Ingredientes.
+Responde en español.${profileInfo}
+Si la dieta es KETO, advierte sobre harinas refinadas.`
+        });
 
         const parts = images.map((data) => ({
             inlineData: { mimeType: 'image/jpeg', data }
         }));
         parts.push({ text: prompt || 'Analiza esta etiqueta nutricional.' });
 
-        const response = await genAI.models.generateContent({
-            model: 'gemini-1.5-flash', // Flash es más rápido y estable para análisis de visión
-            contents: [{ role: 'user', parts }],
-            config: {
-                systemInstruction: `Eres un Auditor de Calidad Alimentaria experto en productos centroamericanos.
-Analiza etiquetas nutricionales o fotos de platos servidos.
-IGNORA publicidad, slogans y recetas; enfócate SOLO en Información Nutricional e Ingredientes.
-Responde en español.${profileInfo}
-Si la dieta es KETO, advierte sobre harinas refinadas.`
-            }
-        });
+        const result = await model.generateContent(parts);
+        const response = await result.response;
+        const text = response.text();
 
-        const text = response.text || 'No se pudo obtener respuesta.';
         return res.status(200).json({ result: text });
 
     } catch (error) {

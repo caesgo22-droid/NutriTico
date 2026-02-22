@@ -25,19 +25,11 @@ module.exports = async function handler(req, res) {
             ? `Atleta: ${profile.name}, Estrategia: ${(profile.strategy || []).join(' + ')}`
             : '';
 
-        const genAI = new GoogleGenAI({ apiKey });
-
-        const parts = images.map((data) => ({
-            inlineData: { mimeType: 'image/jpeg', data }
-        }));
-        parts.push({ text: `Extrae los datos nutricionales por porción de esta etiqueta en JSON estricto. ${profileInfo}` });
-
-        const response = await genAI.models.generateContent({
+        const genAI = new GoogleGenAI(apiKey);
+        const model = genAI.getGenerativeModel({
             model: 'gemini-1.5-flash',
-            contents: [{ role: 'user', parts }],
-            config: {
-                responseMimeType: 'application/json',
-                systemInstruction: `Extrae datos de la TABLA NUTRICIONAL. IGNORA publicidad y recetas.
+            generationConfig: { responseMimeType: 'application/json' },
+            systemInstruction: `Extrae datos de la TABLA NUTRICIONAL. IGNORA publicidad y recetas.
 Devuelve EXACTAMENTE este JSON (sin texto extra, solo JSON):
 {
   "name": "Nombre del producto",
@@ -51,10 +43,17 @@ Devuelve EXACTAMENTE este JSON (sin texto extra, solo JSON):
   "fiber": 0
 }
 Todos los valores numéricos deben ser números, no strings.`
-            }
         });
 
-        const text = response.text || '{}';
+        const parts = images.map((data) => ({
+            inlineData: { mimeType: 'image/jpeg', data }
+        }));
+        parts.push({ text: `Extrae los datos nutricionales por porción de esta etiqueta en JSON estricto. ${profileInfo}` });
+
+        const result = await model.generateContent(parts);
+        const response = await result.response;
+        const text = response.text();
+
         return res.status(200).json({ data: text });
 
     } catch (error) {

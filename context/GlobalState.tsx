@@ -153,25 +153,36 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setState(prev => ({ ...prev, isLoadingData: true }));
         try {
           const docRef = doc(db, "users", user.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const data = docSnap.data() as AppState;
-            setState({
-              ...data,
-              isLoadingData: false,
-              user: { ...data.user, id: user.uid, isAuthenticated: true, isSyncing: false }
-            });
-          } else {
-            // Usuario nuevo
+          try {
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              const data = docSnap.data() as AppState;
+              setState({
+                ...data,
+                isLoadingData: false,
+                user: { ...data.user, id: user.uid, isAuthenticated: true, isSyncing: false }
+              });
+            } else {
+              // Usuario nuevo
+              setState(prev => ({
+                ...prev,
+                isLoadingData: false,
+                user: { ...prev.user, id: user.uid, isAuthenticated: true }
+              }));
+            }
+          } catch (error: any) {
+            console.warn("Firestore access error (likely offline):", error.code || error.message);
+            // Si falla por estar offline, intentamos seguir con lo que tengamos en el estado local
+            // que podría ser el valor por defecto o lo cargado en memoria pero marcamos cargado.
             setState(prev => ({
               ...prev,
               isLoadingData: false,
               user: { ...prev.user, id: user.uid, isAuthenticated: true }
             }));
           }
-        } catch (error) {
-          console.error("Doc read error", error);
-          setState(prev => ({ ...prev, isLoadingData: false, user: { ...prev.user, id: user.uid, isAuthenticated: true } }));
+        } catch (outerError) {
+          console.error("Critical Auth State Error:", outerError);
+          setState(prev => ({ ...prev, isLoadingData: false }));
         }
       } else {
         setState({ ...defaultState, isLoadingData: false });
