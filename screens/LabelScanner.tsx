@@ -4,7 +4,7 @@ import { useGlobalState } from '../context/GlobalState';
 import { analyzeLabels, extractFoodData } from '../services/aiCore';
 import { FoodItem } from '../types';
 
-// Helper de compresión para evitar Error 413 (Vercel Payload Limit)
+// Helper de compresión y pre-procesamiento para el Satélite Escáner
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -14,7 +14,7 @@ const compressImage = (file: File): Promise<string> => {
       img.src = event.target?.result as string;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_DIM = 1280;
+        const MAX_DIM = 1440; // Resolución ligeramente mayor para mejor OCR
         let { width, height } = img;
         if (width > height) {
           if (width > MAX_DIM) { height *= MAX_DIM / width; width = MAX_DIM; }
@@ -23,8 +23,36 @@ const compressImage = (file: File): Promise<string> => {
         }
         canvas.width = width;
         canvas.height = height;
-        canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.75).split(',')[1]);
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return reject('No se pudo obtener el contexto del canvas');
+
+        // Dibujo inicial
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Fase de Tratamiento: Filtros de Mejora de Lectura
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        // Parámetros de optimización (ajustables para el Satélite Escáner)
+        const contrast = 1.25; // Aumento de contraste del 25% para separar texto de fondo
+        const intercept = 128 * (1 - contrast);
+
+        for (let i = 0; i < data.length; i += 4) {
+          // 1. Grayscale (Luminosidad percibida)
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          // 2. Aplicar Contraste
+          const v = gray * contrast + intercept;
+
+          data[i] = data[i + 1] = data[i + 2] = v;
+          // El canal Alpha (data[i+3]) se mantiene igual
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        // Exportación optimizada: JPEG al 80% (buen balance de peso vs nitidez)
+        resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
       };
     };
     reader.onerror = reject;
@@ -39,8 +67,8 @@ const SHOT_SLOTS = [
 ];
 
 const COMPARE_SLOTS = [
-  { id: 'cf', label: 'Frente', icon: 'inventory_2' },
-  { id: 'cnut', label: 'Nutrición', icon: 'format_list_numbered' },
+  { id: 'cf', label: 'Frente', icon: 'inventory_2', hint: 'Producto A/B' },
+  { id: 'cnut', label: 'Nutrición', icon: 'format_list_numbered', hint: 'Tabla A/B' },
 ];
 
 export const LabelScanner: React.FC = () => {
@@ -62,9 +90,11 @@ export const LabelScanner: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingSlot = useRef<{ product: 'A' | 'B'; slotId: string } | null>(null);
 
+  const imagesA: string[] = Object.values(shotsA);
+  const imagesB: string[] = Object.values(shotsB);
+
   const openPicker = (product: 'A' | 'B', slotId: string) => {
     pendingSlot.current = { product, slotId };
-    // Reset file input value so the same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = '';
     fileInputRef.current?.click();
   };
@@ -85,9 +115,6 @@ export const LabelScanner: React.FC = () => {
       setCompressing(null);
     }
   };
-
-  const imagesA = Object.values(shotsA);
-  const imagesB = Object.values(shotsB);
 
   const handleAnalyze = async () => {
     if (imagesA.length === 0) return;
@@ -127,7 +154,7 @@ export const LabelScanner: React.FC = () => {
   const totalPhotos = imagesA.length + imagesB.length;
 
   // ── Slot Card ───────────────────────────────────────────────────────────────
-  const SlotCard = ({ slot, product, shots }: { slot: typeof SHOT_SLOTS[0]; product: 'A' | 'B'; shots: Record<string, string> }) => {
+  const SlotCard = ({ slot, product, shots }: { slot: typeof SHOT_SLOTS[0] | typeof COMPARE_SLOTS[0]; product: 'A' | 'B'; shots: Record<string, string> }) => {
     const img = shots[slot.id];
     const isCompressing = compressing === slot.id;
     return (
