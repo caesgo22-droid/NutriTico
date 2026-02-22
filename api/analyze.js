@@ -25,29 +25,33 @@ module.exports = async function handler(req, res) {
             ? `\nCONTEXTO: ${profile.name}, Estrategia: ${(profile.strategy || []).join(' + ')}, Condiciones: ${(profile.medicalConditions || []).join(', ')}.`
             : '';
 
-        const genAI = new GoogleGenAI(apiKey);
-        const model = genAI.getGenerativeModel({
+        const genAI = new GoogleGenAI({ apiKey });
+
+        // El SDK nuevo usa genAI.models.generateContent directamente
+        const result = await genAI.models.generateContent({
             model: 'gemini-1.5-flash',
             systemInstruction: `Eres un Auditor de Calidad Alimentaria experto en productos centroamericanos.
 Analiza etiquetas nutricionales o fotos de platos servidos.
 IGNORA publicidad, slogans y recetas; enfócate SOLO en Información Nutricional e Ingredientes.
 Responde en español.${profileInfo}
-Si la dieta es KETO, advierte sobre harinas refinadas.`
+Si la dieta es KETO, advierte sobre harinas refinadas.`,
+            contents: [
+                {
+                    role: 'user',
+                    parts: [
+                        ...images.map(data => ({
+                            inlineData: { mimeType: 'image/jpeg', data }
+                        })),
+                        { text: prompt || 'Analiza esta etiqueta nutricional.' }
+                    ]
+                }
+            ]
         });
 
-        const parts = images.map((data) => ({
-            inlineData: { mimeType: 'image/jpeg', data }
-        }));
-        parts.push({ text: prompt || 'Analiza esta etiqueta nutricional.' });
-
-        const result = await model.generateContent(parts);
-        const response = await result.response;
-        const text = response.text();
-
-        return res.status(200).json({ result: text });
+        return res.status(200).json({ result: result.text });
 
     } catch (error) {
-        console.error('Analyze Error:', error && error.message ? error.message : error);
-        return res.status(500).json({ error: `Error analizando: ${error && error.message ? error.message : 'Error desconocido'}` });
+        console.error('Analyze Error:', error);
+        return res.status(500).json({ error: `Error analizando: ${error.message || 'Error desconocido'}` });
     }
 };

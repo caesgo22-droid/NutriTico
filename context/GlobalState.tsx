@@ -147,11 +147,27 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [state.profile, state.trainingIntensity]);
 
+  // Efecto para persistencia local de alta velocidad (localStorage) como respaldo
+  useEffect(() => {
+    if (state.isOnboardingComplete) {
+      localStorage.setItem('nutritico_local_state', JSON.stringify(state));
+    }
+  }, [state]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setState(prev => ({ ...prev, isLoadingData: true }));
         try {
+          // Intentar primero cargar de localStorage para velocidad instantánea
+          const localData = localStorage.getItem('nutritico_local_state');
+          if (localData) {
+            try {
+              const parsed = JSON.parse(localData);
+              setState({ ...parsed, isLoadingData: true, user: { ...parsed.user, id: user.uid, isAuthenticated: true } });
+            } catch (e) { }
+          }
+
           const docRef = doc(db, "users", user.uid);
           try {
             const docSnap = await getDoc(docRef);
@@ -162,6 +178,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 isLoadingData: false,
                 user: { ...data.user, id: user.uid, isAuthenticated: true, isSyncing: false }
               });
+              // Actualizar cache local
+              localStorage.setItem('nutritico_local_state', JSON.stringify(data));
             } else {
               // Usuario nuevo
               setState(prev => ({
@@ -172,8 +190,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }
           } catch (error: any) {
             console.warn("Firestore access error (likely offline):", error.code || error.message);
-            // Si falla por estar offline, intentamos seguir con lo que tengamos en el estado local
-            // que podría ser el valor por defecto o lo cargado en memoria pero marcamos cargado.
+            // Si falla por estar offline, el estado ya tiene lo de localStorage si existía
             setState(prev => ({
               ...prev,
               isLoadingData: false,
@@ -185,6 +202,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setState(prev => ({ ...prev, isLoadingData: false }));
         }
       } else {
+        localStorage.removeItem('nutritico_local_state');
         setState({ ...defaultState, isLoadingData: false });
       }
     });

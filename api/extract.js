@@ -25,10 +25,11 @@ module.exports = async function handler(req, res) {
             ? `Atleta: ${profile.name}, Estrategia: ${(profile.strategy || []).join(' + ')}`
             : '';
 
-        const genAI = new GoogleGenAI(apiKey);
-        const model = genAI.getGenerativeModel({
+        const genAI = new GoogleGenAI({ apiKey });
+
+        const result = await genAI.models.generateContent({
             model: 'gemini-1.5-flash',
-            generationConfig: { responseMimeType: 'application/json' },
+            config: { responseMimeType: 'application/json' },
             systemInstruction: `Extrae datos de la TABLA NUTRICIONAL. IGNORA publicidad y recetas.
 Devuelve EXACTAMENTE este JSON (sin texto extra, solo JSON):
 {
@@ -42,22 +43,25 @@ Devuelve EXACTAMENTE este JSON (sin texto extra, solo JSON):
   "f": 0,
   "fiber": 0
 }
-Todos los valores numéricos deben ser números, no strings.`
+Todos los valores numéricos deben ser números, no strings.`,
+            contents: [
+                {
+                    role: 'user',
+                    parts: [
+                        ...images.map(data => ({
+                            inlineData: { mimeType: 'image/jpeg', data }
+                        })),
+                        { text: `Extrae los datos nutricionales por porción de esta etiqueta en JSON estricto. ${profileInfo}` }
+                    ]
+                }
+            ]
         });
 
-        const parts = images.map((data) => ({
-            inlineData: { mimeType: 'image/jpeg', data }
-        }));
-        parts.push({ text: `Extrae los datos nutricionales por porción de esta etiqueta en JSON estricto. ${profileInfo}` });
-
-        const result = await model.generateContent(parts);
-        const response = await result.response;
-        const text = response.text();
-
+        const text = result.text;
         return res.status(200).json({ data: text });
 
     } catch (error) {
-        console.error('Extract Error:', error && error.message ? error.message : error);
-        return res.status(500).json({ error: `Error extrayendo datos: ${error && error.message ? error.message : 'Error desconocido'}` });
+        console.error('Extract Error:', error);
+        return res.status(500).json({ error: `Error extrayendo datos: ${error.message || 'Error desconocido'}` });
     }
 };
