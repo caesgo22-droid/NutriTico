@@ -36,10 +36,15 @@ export const Dashboard: React.FC<{ onNavigate: (s: string) => void }> = ({ onNav
         if (!query.trim()) return;
         setLoading(true);
         const res = await consultNutriTico(state, actions, query);
+
+        // EJECUCIÓN DE COMANDOS (Hallazgo Auditoría 1.1) - Ahora funciona en Dashboard
+        if (res.planCommands && res.planCommands.length > 0) {
+            actions.applyAICommands(res.planCommands);
+        }
+
         setAiResult(res);
         setLoading(false);
         setQuery('');
-        // Trigger sync after significant AI action
         actions.syncToCloud();
     };
 

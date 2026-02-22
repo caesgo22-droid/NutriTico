@@ -128,4 +128,5 @@ export interface AppActions {
   completeOnboarding: () => void;
   resetApp: () => void;
   syncToCloud: () => Promise<void>;
+  applyAICommands: (commands: AIPlanCommand[]) => void;
 }

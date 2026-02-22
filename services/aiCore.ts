@@ -2,12 +2,27 @@
 import { AppState, AIResponse, AppActions, FoodItem } from "../types";
 // No más dependencia de Firebase Functions aquí, usamos Fetch estándar para Vercel api/*
 
+// Helper para reducir el payload enviado a la IA (Hallazgo Auditoría 1.2)
+const getAISummary = (state: AppState) => {
+    return {
+        profile: state.profile,
+        trainingIntensity: state.trainingIntensity,
+        calculatedTargets: state.calculatedTargets,
+        weeklyPlan: state.weeklyPlan,
+        activeMeals: state.activeMeals,
+        mealTimes: state.mealTimes
+    };
+};
+
 export const consultNutriTico = async (state: AppState, actions: AppActions, userQuery: string): Promise<AIResponse> => {
     try {
         const response = await fetch('/api/consult', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userQuery, stateString: JSON.stringify(state) })
+            body: JSON.stringify({
+                userQuery,
+                stateString: JSON.stringify(getAISummary(state))
+            })
         });
 
         if (!response.ok) throw new Error('Network response was not ok');
@@ -70,7 +85,11 @@ export const analyzeLabels = async (state: AppState, images: string[], prompt: s
         const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images, prompt, stateString: JSON.stringify(state) })
+            body: JSON.stringify({
+                images,
+                prompt,
+                stateString: JSON.stringify(getAISummary(state))
+            })
         });
 
         if (!response.ok) throw new Error('Analyze failed');
@@ -87,7 +106,10 @@ export const extractFoodData = async (state: AppState, images: string[]): Promis
         const response = await fetch('/api/extract', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images, stateString: JSON.stringify(state) })
+            body: JSON.stringify({
+                images,
+                stateString: JSON.stringify(getAISummary(state))
+            })
         });
 
         if (!response.ok) throw new Error('Extraction failed');

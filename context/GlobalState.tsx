@@ -137,7 +137,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     resetApp: async () => {
       await signOut(auth);
       setState(defaultState);
-    }
+    },
+    applyAICommands: (commands) => setState(prev => {
+      let newPlan = { ...prev.weeklyPlan };
+      commands.forEach(cmd => {
+        const dp = newPlan[cmd.dayIndex] || {};
+        const mp = dp[cmd.meal] || {};
+        const gp = mp[cmd.group] || {};
+        const ng = { ...gp };
+        if (cmd.qty <= 0) delete ng[cmd.itemId]; else ng[cmd.itemId] = cmd.qty;
+        newPlan = { ...newPlan, [cmd.dayIndex]: { ...dp, [cmd.meal]: { ...mp, [cmd.group]: ng } } };
+      });
+      return { ...prev, weeklyPlan: newPlan };
+    })
   };
 
   useEffect(() => {

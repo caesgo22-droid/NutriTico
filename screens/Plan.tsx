@@ -86,22 +86,11 @@ export const Plan: React.FC = () => {
     const res = await consultNutriTico(state, actions, chatQuery);
 
     // EJECUCIÓN DE COMANDOS DE LA IA (Magia estructurada 6.2)
+    // EJECUCIÓN DE COMANDOS DE LA IA CENTRALIZADA (Hallazgo Auditoría 1.1)
     if (res.planCommands && res.planCommands.length > 0) {
-      let newPlan = { ...state.weeklyPlan };
-      res.planCommands.forEach(cmd => {
-        const dp = newPlan[cmd.dayIndex] || {};
-        const mp = dp[cmd.meal] || {};
-        const gp = mp[cmd.group] || {};
-        const ng = { ...gp };
-        if (cmd.qty <= 0) delete ng[cmd.itemId]; else ng[cmd.itemId] = cmd.qty;
-        newPlan = { ...newPlan, [cmd.dayIndex]: { ...dp, [cmd.meal]: { ...mp, [cmd.group]: ng } } };
-      });
-      actions.setWeeklyPlan(newPlan);
-
+      actions.applyAICommands(res.planCommands);
       setUpdateNotice(`${res.planCommands.length} ajustes aplicados al plan`);
       setTimeout(() => setUpdateNotice(null), 4000);
-
-      // Sincronización inmediata con la nube
       setTimeout(() => actions.syncToCloud(), 100);
     }
 
