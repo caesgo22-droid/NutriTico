@@ -100,18 +100,38 @@ export const LabelScanner: React.FC = () => {
   };
 
   const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
     const slot = pendingSlot.current;
-    if (!file || !slot) return;
+    if (!slot) return;
 
-    setCompressing(slot.slotId);
+    setLoading(true);
     try {
-      const b64 = await compressImage(file);
-      if (slot.product === 'A') setShotsA(prev => ({ ...prev, [slot.slotId]: b64 }));
-      else setShotsB(prev => ({ ...prev, [slot.slotId]: b64 }));
-    } catch {
-      alert('No se pudo procesar la imagen.');
+      if (files.length === 1) {
+        setCompressing(slot.slotId);
+        const b64 = await compressImage(files[0] as File);
+        if (slot.product === 'A') setShotsA(prev => ({ ...prev, [slot.slotId]: b64 }));
+        else setShotsB(prev => ({ ...prev, [slot.slotId]: b64 }));
+        setCompressing(null);
+      } else {
+        const currentSlots = slot.product === 'A' ? SHOT_SLOTS : COMPARE_SLOTS;
+        const currentShots = slot.product === 'A' ? shotsA : shotsB;
+        const setShots = slot.product === 'A' ? setShotsA : setShotsB;
+        let availableSlots = currentSlots.map(s => s.id).filter(id => !currentShots[id]);
+        for (let i = 0; i < Math.min(files.length, availableSlots.length); i++) {
+          const slotId = availableSlots[i];
+          setCompressing(slotId);
+          const b64 = await compressImage(files[i] as File);
+          setShots(prev => ({ ...prev, [slotId]: b64 }));
+          setCompressing(null);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al procesar el lote de imágenes.');
     } finally {
+      setLoading(false);
       setCompressing(null);
     }
   };
@@ -154,7 +174,7 @@ export const LabelScanner: React.FC = () => {
   const totalPhotos = imagesA.length + imagesB.length;
 
   // ── Slot Card ───────────────────────────────────────────────────────────────
-  const SlotCard = ({ slot, product, shots }: { slot: typeof SHOT_SLOTS[0] | typeof COMPARE_SLOTS[0]; product: 'A' | 'B'; shots: Record<string, string> }) => {
+  const SlotCard = ({ slot, product, shots }: { slot: { id: string, label: string, icon: string, hint: string }; product: 'A' | 'B'; shots: Record<string, string> }) => {
     const img = shots[slot.id];
     const isCompressing = compressing === slot.id;
     return (
@@ -254,7 +274,7 @@ export const LabelScanner: React.FC = () => {
         )}
 
         {/* ── Input oculto ─────────────────────────────────── */}
-        <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleCapture} className="hidden" />
+        <input type="file" accept="image/*" multiple ref={fileInputRef} onChange={handleCapture} className="hidden" />
 
         {/* ── Tips de guía cuando no hay fotos ────────────── */}
         {imagesA.length === 0 && (
