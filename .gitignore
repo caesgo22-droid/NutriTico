@@ -16,9 +16,8 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 .idea
+# macOS
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+._*
+.Spotlight-V100
+.Trashes
