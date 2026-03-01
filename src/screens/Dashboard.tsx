@@ -80,6 +80,24 @@ export const Dashboard: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Desktop Navigation */}
+                <nav className="hidden lg:flex items-center gap-2 bg-white/5 border border-white/10 rounded-full p-1 absolute left-1/2 -translate-x-1/2">
+                    {navItems.map(item => {
+                        const Icon = item.icon;
+                        const active = activeTab === item.id;
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveTab(item.id)}
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-full transition-all ${active ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                <Icon size={16} />
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-white' : ''}`}>{item.label}</span>
+                            </button>
+                        );
+                    })}
+                </nav>
+
                 <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-full pl-4 pr-1 py-1">
                     <div className="flex flex-col items-end">
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Calorías Hoy</span>
