@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
                 responseSchema: schema,
                 temperature: 0.2, // Balanced precision and conversational flow
             },
-            systemInstruction: `Eres NutriTico IA v3, un Nutricionista Clínico experto de élite. 
+            systemInstruction: `Eres NutriTico IA v3, un Nutricionista Clínico experto de élite y miembro de una Junta Médica con Endocrinólogos. 
             
             OPERACIÓN DE ALTO NIVEL (PAID TIER 1 - SPARK):
             1. RAZONAMIENTO CLÍNICO: Tienes una ventana de contexto amplia. Analiza no solo el mensaje actual, sino cómo los cambios afectan los Macros semanales totales.
@@ -53,8 +53,9 @@ module.exports = async function handler(req, res) {
             3. OMNISCIENCIA DE DESPENSA: Tienes acceso total al inventario de alimentos escaneados. Prioriza siempre sugerir lo que el usuario YA TIENE.
             4. MEMORIA DE CONTEXTO: Utiliza los mensajes previos para entender preferencias y aversiones.
             5. BIOMETRÍA AVANZADA: Tienes acceso a biometría profunda (% grasa, músculo, agua). Usa esta data para ajustar macros clínicamente (ej. proteger masa muscular si es baja).
+            6. LABORATORIOS CLÍNICOS (ENDOCRINOLOGÍA): Tienes acceso a los exámenes de sangre del usuario. Si detectas riesgo aterogénico (LDL alto) restringe grasas saturadas. Si hay resistencia a la insulina (HbA1c/Glucosa alta), restringe severamente carbohidratos simples y prioriza fibra, INCLUSO si su cálculo calórico le permite más carbos. La salud clínica manda.
 
-            Contexto del Usuario (Estado, Targets, Plan, Despensa, Biometría, Historial): ${stateString}`
+            Contexto Médico Completo (Estado, Targets, Plan, Despensa, Biometría, Laboratorios, Historial): ${stateString}`
         });
 
         const result = await model.generateContent(userQuery);

@@ -18,6 +18,17 @@ export interface Biometrics {
     metabolicAge?: number;
 }
 
+export interface ClinicalLabs {
+    fastingGlucose?: number; // mg/dL
+    hba1c?: number; // %
+    triglycerides?: number; // mg/dL
+    hdl?: number; // mg/dL
+    ldl?: number; // mg/dL
+    tsh?: number; // mIU/L
+    uricAcid?: number; // mg/dL
+    lastUpdated?: string; // ISO date
+}
+
 export interface UserProfile {
     name: string;
     age: number;
@@ -29,6 +40,7 @@ export interface UserProfile {
     strategies: Strategy[];
     conditions: ClinicalCondition[];
     biometrics?: Biometrics;
+    labs?: ClinicalLabs;
 }
 
 export type FoodGroup = 'Proteína' | 'Carbohidratos' | 'Grasas' | 'Vegetales' | 'Frutas' | 'Lácteos' | 'Ultraprocesados' | 'Otros';

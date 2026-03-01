@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { useGlobalState } from '../context/GlobalState';
-import { Calendar as CalendarIcon, Utensils, MessageSquare, PlusSquare, User, Search, TrendingUp, ChevronRight, Activity, Send, BookOpen } from 'lucide-react';
+import { Calendar as CalendarIcon, Utensils, MessageSquare, PlusSquare, User, Search, TrendingUp, ChevronRight, Activity, Send, BookOpen, HeartPulse } from 'lucide-react';
 import { PantryScanner } from '../components/PantryScanner';
 import { PlanViewer } from '../components/PlanViewer';
 import { EquiposDirectorio } from '../components/EquiposDirectorio';
 import { Methodology } from '../components/Methodology';
 import { BiometricScanner } from '../components/BiometricScanner';
+import { ClinicalLabsScanner } from '../components/ClinicalLabsScanner';
 
 export const Dashboard: React.FC = () => {
     const { state, dispatch } = useGlobalState();
     const [activeTab, setActiveTab] = useState('chat');
     const [showMethodology, setShowMethodology] = useState(false);
     const [showBiometrics, setShowBiometrics] = useState(false);
+    const [showLabs, setShowLabs] = useState(false);
     const [chatInput, setChatInput] = useState('');
     const [isAiTyping, setIsAiTyping] = useState(false);
 
@@ -118,6 +120,8 @@ export const Dashboard: React.FC = () => {
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {showBiometrics ? (
                                 <BiometricScanner onBack={() => setShowBiometrics(false)} />
+                            ) : showLabs ? (
+                                <ClinicalLabsScanner onBack={() => setShowLabs(false)} />
                             ) : showMethodology ? (
                                 <div>
                                     <button
@@ -154,6 +158,24 @@ export const Dashboard: React.FC = () => {
                                                 </div>
                                             </div>
                                             <ChevronRight className="text-slate-600 group-hover:text-emerald-500 transition-all" />
+                                        </div>
+
+                                        <div
+                                            onClick={() => setShowLabs(true)}
+                                            className="bg-white/5 border border-white/10 p-6 rounded-[2rem] flex items-center justify-between group hover:bg-white/[0.08] transition-all cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="size-12 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500">
+                                                    <HeartPulse size={20} />
+                                                </div>
+                                                <div>
+                                                    <span className="block text-white font-black uppercase text-xs tracking-widest">Exámenes Clínicos</span>
+                                                    <span className="text-[10px] text-slate-500">
+                                                        {state.profile.labs?.lastUpdated ? `Últimos labs: ${new Date(state.profile.labs.lastUpdated).toLocaleDateString()}` : 'Añadir laboratorios'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <ChevronRight className="text-slate-600 group-hover:text-red-500 transition-all" />
                                         </div>
 
                                         <button
