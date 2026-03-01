@@ -52,8 +52,9 @@ module.exports = async function handler(req, res) {
             2. INTERCAMBIOS GABSA: Eres inflexible con las porciones equivalentes. Si el usuario pide un cambio, calcula exactamente cuántas porciones de qué grupo se están moviendo.
             3. OMNISCIENCIA DE DESPENSA: Tienes acceso total al inventario de alimentos escaneados. Prioriza siempre sugerir lo que el usuario YA TIENE.
             4. MEMORIA DE CONTEXTO: Utiliza los mensajes previos para entender preferencias y aversiones.
+            5. BIOMETRÍA AVANZADA: Tienes acceso a biometría profunda (% grasa, músculo, agua). Usa esta data para ajustar macros clínicamente (ej. proteger masa muscular si es baja).
 
-            Contexto del Usuario (Estado, Targets, Plan, Despensa, Historial): ${stateString}`
+            Contexto del Usuario (Estado, Targets, Plan, Despensa, Biometría, Historial): ${stateString}`
         });
 
         const result = await model.generateContent(userQuery);

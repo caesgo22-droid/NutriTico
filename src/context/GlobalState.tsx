@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { AppState, UserProfile, AIPlanUpdate, FoodEquivalent } from '../types';
+import { AppState, UserProfile, AIPlanUpdate, FoodEquivalent, Biometrics } from '../types';
 
 const LOCAL_STORAGE_KEY = 'nutritico_v3_state';
 
@@ -75,6 +75,7 @@ type Action =
     | { type: 'APPLY_PLAN_UPDATE'; payload: AIPlanUpdate['actions'] }
     | { type: 'ADD_CHAT_MESSAGE'; payload: { role: 'user' | 'ai'; text: string } }
     | { type: 'ADD_TO_PANTRY'; payload: FoodEquivalent }
+    | { type: 'UPDATE_BIOMETRICS'; payload: Biometrics }
     | { type: 'SET_LOADING'; payload: boolean }
     | { type: 'SET_ERROR'; payload: string | null }
     | { type: 'LOAD_STATE'; payload: Partial<Omit<ExtendedAppState, 'authUser'>> };
@@ -125,6 +126,14 @@ function reducer(state: ExtendedAppState, action: Action): ExtendedAppState {
             return {
                 ...state,
                 pantry: [...state.pantry, action.payload]
+            };
+        case 'UPDATE_BIOMETRICS':
+            return {
+                ...state,
+                profile: {
+                    ...state.profile,
+                    biometrics: action.payload
+                }
             };
         case 'LOAD_STATE':
             return { ...state, ...action.payload };

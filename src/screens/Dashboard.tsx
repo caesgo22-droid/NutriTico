@@ -5,11 +5,13 @@ import { PantryScanner } from '../components/PantryScanner';
 import { PlanViewer } from '../components/PlanViewer';
 import { EquiposDirectorio } from '../components/EquiposDirectorio';
 import { Methodology } from '../components/Methodology';
+import { BiometricScanner } from '../components/BiometricScanner';
 
 export const Dashboard: React.FC = () => {
     const { state, dispatch } = useGlobalState();
     const [activeTab, setActiveTab] = useState('chat');
     const [showMethodology, setShowMethodology] = useState(false);
+    const [showBiometrics, setShowBiometrics] = useState(false);
     const [chatInput, setChatInput] = useState('');
     const [isAiTyping, setIsAiTyping] = useState(false);
 
@@ -114,7 +116,9 @@ export const Dashboard: React.FC = () => {
                     {activeTab === 'equivalents' && <EquiposDirectorio />}
                     {activeTab === 'profile' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {showMethodology ? (
+                            {showBiometrics ? (
+                                <BiometricScanner onBack={() => setShowBiometrics(false)} />
+                            ) : showMethodology ? (
                                 <div>
                                     <button
                                         onClick={() => setShowMethodology(false)}
@@ -136,7 +140,10 @@ export const Dashboard: React.FC = () => {
                                     </div>
 
                                     <div className="grid grid-cols-1 gap-4">
-                                        <div className="bg-white/5 border border-white/10 p-6 rounded-[2rem] flex items-center justify-between group hover:bg-white/[0.08] transition-all cursor-pointer">
+                                        <div
+                                            onClick={() => setShowBiometrics(true)}
+                                            className="bg-white/5 border border-white/10 p-6 rounded-[2rem] flex items-center justify-between group hover:bg-white/[0.08] transition-all cursor-pointer"
+                                        >
                                             <div className="flex items-center gap-4">
                                                 <div className="size-12 bg-white/5 rounded-2xl flex items-center justify-center text-slate-400">
                                                     <Activity size={20} />

@@ -9,6 +9,15 @@ export type ActivityLevel = 1.2 | 1.375 | 1.55 | 1.725 | 1.9;
 export type Strategy = 'balanceado' | 'keto' | 'ciclado' | 'ayuno_intermitente';
 export type ClinicalCondition = 'Hypertension' | 'Diabetes' | 'MetabolicSyndrome' | 'HighPerformance' | 'None';
 
+export interface Biometrics {
+    bodyFatPercentage?: number;
+    muscleMassPercentage?: number;
+    waterPercentage?: number;
+    boneMass?: number;
+    visceralFat?: number;
+    metabolicAge?: number;
+}
+
 export interface UserProfile {
     name: string;
     age: number;
@@ -19,6 +28,7 @@ export interface UserProfile {
     goal: Goal;
     strategies: Strategy[];
     conditions: ClinicalCondition[];
+    biometrics?: Biometrics;
 }
 
 export type FoodGroup = 'Proteína' | 'Carbohidratos' | 'Grasas' | 'Vegetales' | 'Frutas' | 'Lácteos' | 'Ultraprocesados' | 'Otros';
