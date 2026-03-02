@@ -1,9 +1,9 @@
-const { GoogleGenAI } = require("@google/genai");
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import { GoogleGenAI } from "@google/genai";
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'Missing API Key' });
@@ -18,18 +18,18 @@ module.exports = async function handler(req, res) {
 
         const systemPrompt = `Eres el Auditor de Visión de NutriTico IA v3.
 
-ESTÁNDARES DE CALIDAD:
-1. OCR EXTREMO: Si hay una etiqueta nutricional, extrae los datos exactos por 100g o por porción indicada.
-2. CLASIFICACIÓN GABSA: Clasifica el alimento estrictamente en los grupos de intercambio de Costa Rica.
-3. REGLA DE SEGURIDAD: Si el alimento es ultraprocesado o tiene ingredientes conflictivos, dilo en clinicalAdvice.
-4. Devuelve SOLAMENTE un objeto JSON puro con las claves: id, name, brand, ingredients, group, calories, macros (p/c/f), equivalentPortion, clinicalAdvice.
-5. group debe ser uno de: Proteína, Carbohidratos, Grasas, Vegetales, Frutas, Lácteos, Ultraprocesados, Otros.
-6. calories y macros deben ser números.
-7. NO incluyas bloques markdown, solo JSON puro.
+REGLAS:
+1. Analiza con precisión OCR el alimento, empaque o etiqueta nutricional de las imágenes.
+2. Devuelve SOLAMENTE un objeto JSON puro, sin markdown.
+3. El JSON debe tener: id (string "v_"+algo único), name (string), brand (string o ""), ingredients (string o ""), group (uno de: Proteína, Carbohidratos, Grasas, Vegetales, Frutas, Lácteos, Ultraprocesados, Otros), calories (número), macros (objeto con p: número, c: número, f: número), equivalentPortion (string), clinicalAdvice (string o "").
+4. Si hay etiqueta nutricional, extrae los datos EXACTOS.
 
-Contexto del usuario: ${stateString}`;
+Ejemplo de respuesta:
+{"id":"v_123","name":"Leche Descremada","brand":"Dos Pinos","ingredients":"Leche descremada, vitaminas","group":"Lácteos","calories":90,"macros":{"p":8,"c":12,"f":0},"equivalentPortion":"1 taza (240ml)","clinicalAdvice":""}
 
-        const contentParts = [{ text: systemPrompt + '\n\n' + (prompt || 'Analiza este alimento y extrae toda la información nutricional disponible.') }];
+Contexto del usuario: ${stateString || '{}'}`;
+
+        const contentParts = [{ text: systemPrompt + '\n\n' + (prompt || 'Analiza este alimento.') }];
 
         for (const img of images) {
             const mimeType = img.mimeType || 'image/jpeg';
@@ -38,15 +38,21 @@ Contexto del usuario: ${stateString}`;
             if (mimeType === 'application/pdf') {
                 const tmpFile = path.join(os.tmpdir(), `pantry_${Date.now()}.pdf`);
                 fs.writeFileSync(tmpFile, Buffer.from(base64Data, 'base64'));
-
                 try {
-                    const uploaded = await ai.files.upload({
+                    const uploadedFile = await ai.files.upload({
                         file: tmpFile,
                         config: { mimeType: 'application/pdf' }
                     });
-                    contentParts.push({ fileData: { fileUri: uploaded.uri, mimeType: 'application/pdf' } });
+                    const fileUri = uploadedFile?.uri || uploadedFile?.file?.uri || '';
+                    if (fileUri) {
+                        contentParts.push({ fileData: { fileUri, mimeType: 'application/pdf' } });
+                    } else {
+                        contentParts.push({ inlineData: { data: base64Data, mimeType: 'application/pdf' } });
+                    }
+                } catch (e) {
+                    contentParts.push({ inlineData: { data: base64Data, mimeType: 'application/pdf' } });
                 } finally {
-                    fs.unlinkSync(tmpFile);
+                    try { fs.unlinkSync(tmpFile); } catch (_) { }
                 }
             } else {
                 contentParts.push({ inlineData: { data: base64Data, mimeType } });
@@ -58,12 +64,13 @@ Contexto del usuario: ${stateString}`;
             contents: [{ role: 'user', parts: contentParts }]
         });
 
-        let text = response.text;
-        if (typeof text === 'function') text = text();
+        let text = typeof response.text === 'function' ? response.text() : response.text;
+        if (!text) text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
         text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
         const result = JSON.parse(text);
         if (!result.id) result.id = `v_${Date.now()}`;
+        if (!result.macros) result.macros = { p: 0, c: 0, f: 0 };
 
         return res.status(200).json(result);
 
@@ -71,4 +78,4 @@ Contexto del usuario: ${stateString}`;
         console.error('Vision API Error:', error?.message || error);
         return res.status(500).json({ error: error?.message || 'Error processing image' });
     }
-};
+}
