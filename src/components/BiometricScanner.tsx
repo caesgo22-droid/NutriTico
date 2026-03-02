@@ -3,6 +3,7 @@ import { useGlobalState } from '../context/GlobalState';
 import { Camera, ChevronRight, Activity, Percent, Droplets, Bone, Flame } from 'lucide-react';
 import { Biometrics } from '../types';
 import { Tooltip } from './Tooltip';
+import { compressImageFile } from '../utils/imageCompressor';
 
 interface Props {
     onBack: () => void;
@@ -23,30 +24,32 @@ export const BiometricScanner: React.FC<Props> = ({ onBack }) => {
         setError(null);
 
         try {
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const base64String = reader.result as string;
+            const base64String = await compressImageFile(file);
 
-                // Call our new api/biometrics endpoint
-                const res = await fetch('/api/biometrics', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ images: [base64String] })
-                });
+            // Call our new api/biometrics endpoint
+            const res = await fetch('/api/biometrics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ images: [base64String] })
+            });
 
-                if (!res.ok) throw new Error("Falla en el Cerebro Biométrico");
+            if (!res.ok) throw new Error("Falla en el Cerebro Biométrico");
 
-                const data: Biometrics = await res.json();
-                setScannedData(data);
+            const data: Biometrics = await res.json();
+            setScannedData(data);
 
-                // Save to Global State immediately
-                dispatch({ type: 'UPDATE_BIOMETRICS', payload: data });
-                syncToCloud();
-            };
-            reader.readAsDataURL(file);
-        } catch (err) {
+            // Save to Global State immediately
+            dispatch({ type: 'UPDATE_BIOMETRICS', payload: data });
+            syncToCloud();
+        } catch (err: any) {
             console.error(err);
-            setError("No se pudo extraer la biometría. Intenta con un pantallazo más claro.");
+            let errorMsg = "No se pudo extraer la biometría. Intenta con un pantallazo más claro.";
+            if (err.message?.includes("413") || err.message?.includes("large")) {
+                errorMsg = "La imagen es demasiado grande. Prueba con un pantallazo de menor resolución.";
+            } else if (err.message?.includes("429")) {
+                errorMsg = "Límite de red alcanzado. Reintenta en breve.";
+            }
+            setError(errorMsg);
         } finally {
             setIsScanning(false);
         }

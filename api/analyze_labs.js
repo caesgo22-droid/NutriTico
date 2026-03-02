@@ -42,11 +42,13 @@ module.exports = async function handler(req, res) {
         const parts = [prompt];
         if (images && images.length > 0) {
             images.forEach(img => {
-                const base64Data = img.includes('base64,') ? img.split('base64,')[1] : img;
+                const mimeType = img.mimeType || "image/jpeg";
+                const base64Data = typeof img === 'string' ? img.replace(/^data:[a-z]+\/[a-z]+;base64,/, '') : img.data.replace(/^data:[a-z]+\/[a-z]+;base64,/, '');
+
                 parts.push({
                     inlineData: {
                         data: base64Data,
-                        mimeType: "image/jpeg"
+                        mimeType: mimeType
                     }
                 });
             });

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useGlobalState } from '../context/GlobalState';
 import { AlertTriangle, Save, Edit3, X, UploadCloud } from 'lucide-react';
 import { FoodEquivalent } from '../types';
+import { compressImageFile } from '../utils/imageCompressor';
 
 export const PantryScanner: React.FC = () => {
     const { state, dispatch, syncToCloud } = useGlobalState();
@@ -17,16 +18,9 @@ export const PantryScanner: React.FC = () => {
         setEditableResult(null);
 
         try {
-            const imagePromises = Array.from(files).map((file) => {
-                return new Promise<{ data: string, mimeType: string }>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const base64 = (reader.result as string).split(',')[1];
-                        resolve({ data: base64, mimeType: file.type });
-                    };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
+            const imagePromises = Array.from(files).map(async (file) => {
+                const base64 = await compressImageFile(file);
+                return { data: base64, mimeType: file.type };
             });
 
             const images = await Promise.all(imagePromises);

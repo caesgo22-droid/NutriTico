@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { useGlobalState } from '../context/GlobalState';
-import { ChevronRight, Activity, FileText, Droplet, HeartPulse, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, Activity, Droplet, HeartPulse, AlertCircle, CheckCircle2, UploadCloud } from 'lucide-react';
 import { ClinicalLabs } from '../types';
 import { Tooltip } from './Tooltip';
+import { compressImageFile } from '../utils/imageCompressor';
 
 interface Props {
     onBack: () => void;
@@ -13,40 +14,70 @@ export const ClinicalLabsScanner: React.FC<Props> = ({ onBack }) => {
     const [isScanning, setIsScanning] = useState(false);
     const [scannedData, setScannedData] = useState<ClinicalLabs | null>(state.profile.labs || null);
     const [error, setError] = useState<string | null>(null);
+    const [dragActive, setDragActive] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    const processFiles = async (files: File[] | FileList) => {
+        if (!files || files.length === 0) return;
 
         setIsScanning(true);
         setError(null);
 
         try {
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const base64String = reader.result as string;
+            const imagePromises = Array.from(files).map(async (file) => {
+                const base64 = await compressImageFile(file);
+                return { data: base64, mimeType: file.type };
+            });
 
-                const res = await fetch('/api/analyze_labs', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ images: [base64String] })
-                });
+            const images = await Promise.all(imagePromises);
 
-                if (!res.ok) throw new Error("Falla en el Cerebro Médico");
+            const res = await fetch('/api/analyze_labs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ images })
+            });
 
-                const data = await res.json();
-                setScannedData(data);
+            if (!res.ok) throw new Error("Falla en el Cerebro Médico");
 
-                dispatch({ type: 'UPDATE_LABS', payload: data });
-                syncToCloud();
-            };
-            reader.readAsDataURL(file);
-        } catch (err) {
+            const data = await res.json();
+            setScannedData(data);
+
+            dispatch({ type: 'UPDATE_LABS', payload: data });
+            syncToCloud();
+
+        } catch (err: any) {
             console.error(err);
-            setError("No se pudo analizar el examen. Asegúrate de que los números sean legibles.");
+            let errorMsg = "No se pudo analizar el examen. Asegúrate de que los números sean legibles.";
+            if (err.message?.includes("413") || err.message?.includes("large")) {
+                errorMsg = "El archivo es demasiado grande. Intenta comprimirlo antes de subirlo.";
+            } else if (err.message?.includes("429")) {
+                errorMsg = "Límite alcanzado, intenta de nuevo en unos segundos.";
+            } else if (err.message?.includes("500")) {
+                errorMsg = "El Endocrinólogo IA no pudo responder. Revisa que el documento/foto sea claro.";
+            }
+            setError(errorMsg);
         } finally {
             setIsScanning(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleDrag = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(true);
+        } else if (e.type === "dragleave") {
+            setDragActive(false);
+        }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            processFiles(e.dataTransfer.files);
         }
     };
 
@@ -60,40 +91,50 @@ export const ClinicalLabsScanner: React.FC<Props> = ({ onBack }) => {
                 Volver al Perfil
             </button>
 
-            <div className="bg-gradient-to-br from-red-500/20 to-purple-500/20 border border-red-500/30 rounded-[2.5rem] p-8 text-center relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <HeartPulse size={100} />
-                </div>
-                <div className="relative z-10">
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Consejo Médico (Pro)</h2>
-                    <p className="text-xs text-slate-300 font-bold mb-6 max-w-sm mx-auto">Sube una foto de tus laboratorios recientes. Nuestro Endocrinólogo IA extraerá los biomarcadores para adaptar tu nutrición clínicamente.</p>
+            <div
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                className={`transition-all rounded-[2.5rem] p-1 ${dragActive ? 'bg-red-500 rounded-[2.5rem] scale-[1.02]' : ''}`}
+            >
+                <div className={`bg-gradient-to-br from-red-500/20 to-purple-500/20 border border-red-500/30 rounded-[2.5rem] p-8 text-center relative overflow-hidden h-full flex flex-col items-center justify-center min-h-[300px]`}>
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <HeartPulse size={120} />
+                    </div>
+                    <div className="relative z-10 w-full">
+                        <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Consejo Médico (Pro)</h2>
+                        <p className="text-xs text-slate-300 font-bold mb-8 max-w-sm mx-auto">Sube una foto o PDF de tus laboratorios recientes. Nuestro Endocrinólogo IA extraerá los biomarcadores para adaptar tu nutrición clínicamente.</p>
 
-                    <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                    />
+                        <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            multiple
+                            className="hidden"
+                            ref={fileInputRef}
+                            onChange={(e) => processFiles(e.target.files as FileList)}
+                        />
 
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isScanning}
-                        className="bg-red-500 text-white px-8 py-4 rounded-full font-black uppercase tracking-widest text-xs shadow-lg shadow-red-500/20 flex items-center gap-3 mx-auto hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
-                    >
                         {isScanning ? (
-                            <>
-                                <span className="material-symbols-outlined animate-spin">sync</span>
-                                Analizando Biomarcadores...
-                            </>
+                            <div className="flex flex-col items-center gap-4 py-4">
+                                <div className="w-16 h-1 bg-red-500 rounded-full animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.8)]"></div>
+                                <p className="text-red-500 font-black uppercase tracking-widest text-xs">Alineando Biomarcadores...</p>
+                            </div>
                         ) : (
-                            <>
-                                <FileText size={18} />
-                                Subir Examen (Foto/PDF)
-                            </>
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="border-2 border-dashed border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/50 p-6 rounded-3xl mx-auto w-full max-w-sm cursor-pointer transition-all group"
+                            >
+                                <div className="size-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 group-hover:bg-red-500 group-hover:text-white transition-all">
+                                    <UploadCloud size={24} />
+                                </div>
+                                <span className="text-xs font-black uppercase tracking-widest text-red-400 block group-hover:text-white pointer-events-none">
+                                    Arrastra o <span className="underline decoration-red-500/40 underline-offset-4 pointer-events-none">haz click</span>
+                                </span>
+                            </div>
                         )}
-                    </button>
-                    {error && <p className="text-red-400 text-xs mt-4 font-bold">{error}</p>}
+                        {error && <p className="text-red-400 text-xs mt-6 font-bold bg-black/40 p-3 rounded-xl inline-block">{error}</p>}
+                    </div>
                 </div>
             </div>
 
