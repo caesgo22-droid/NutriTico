@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useGlobalState } from '../context/GlobalState';
 import { Camera, ChevronRight, Activity, Percent, Droplets, Bone, Flame } from 'lucide-react';
 import { Biometrics } from '../types';
+import { Tooltip } from './Tooltip';
 
 interface Props {
     onBack: () => void;
@@ -100,22 +101,27 @@ export const BiometricScanner: React.FC<Props> = ({ onBack }) => {
 
             {scannedData && (
                 <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <MetricCard label="Grasa Corporal" value={scannedData.bodyFatPercentage} unit="%" icon={Percent} color="text-amber-500" bg="bg-amber-500/10" border="border-amber-500/20" />
-                    <MetricCard label="Masa Muscular" value={scannedData.muscleMassPercentage} unit="%" icon={Activity} color="text-emerald-500" bg="bg-emerald-500/10" border="border-emerald-500/20" />
-                    <MetricCard label="Agua / Hidratación" value={scannedData.waterPercentage} unit="%" icon={Droplets} color="text-blue-500" bg="bg-blue-500/10" border="border-blue-500/20" />
-                    <MetricCard label="Masa Ósea" value={scannedData.boneMass} unit="kg" icon={Bone} color="text-slate-300" bg="bg-white/10" border="border-white/20" />
-                    <MetricCard label="Grasa Visceral" value={scannedData.visceralFat} unit="" icon={Flame} color="text-red-500" bg="bg-red-500/10" border="border-red-500/20" />
-                    <MetricCard label="Edad Metabólica" value={scannedData.metabolicAge} unit="años" icon={Activity} color="text-purple-500" bg="bg-purple-500/10" border="border-purple-500/20" />
+                    <MetricCard label="Grasa Corporal" value={scannedData.bodyFatPercentage} unit="%" icon={Percent} color="text-amber-500" bg="bg-amber-500/10" border="border-amber-500/20" tip="Tejido adiposo total. Reducirlo mejora la sensibilidad a la insulina y definición muscular." />
+                    <MetricCard label="Masa Muscular" value={scannedData.muscleMassPercentage} unit="%" icon={Activity} color="text-emerald-500" bg="bg-emerald-500/10" border="border-emerald-500/20" tip="Tejido metabólicamente activo. Un porcentaje alto eleva la quema de calorías en reposo." />
+                    <MetricCard label="Hidratación" value={scannedData.waterPercentage} unit="%" icon={Droplets} color="text-blue-500" bg="bg-blue-500/10" border="border-blue-500/20" tip="Porcentaje de agua corporal total. Esencial para el rendimiento celular y la salud articular." />
+                    <MetricCard label="Masa Ósea" value={scannedData.boneMass} unit="kg" icon={Bone} color="text-slate-300" bg="bg-white/10" border="border-white/20" tip="Densidad mineral ósea. Se fortalece con entrenamiento de pesas y buena nutrición." />
+                    <MetricCard label="Grasa Visceral" value={scannedData.visceralFat} unit="" icon={Flame} color="text-red-500" bg="bg-red-500/10" border="border-red-500/20" tip="Grasa interna alrededor de los órganos. Niveles altos aumentan el riesgo cardiovascular drásticamente." />
+                    <MetricCard label="Edad Metabólica" value={scannedData.metabolicAge} unit="años" icon={Activity} color="text-purple-500" bg="bg-purple-500/10" border="border-purple-500/20" tip="Estimación del metabolismo basal en comparación con la media cronológica. Ideal que sea menor a tu edad real." />
                 </div>
             )}
         </div>
     );
 };
 
-const MetricCard = ({ label, value, unit, icon: Icon, color, bg, border }: any) => {
+const MetricCard = ({ label, value, unit, icon: Icon, color, bg, border, tip }: any) => {
     if (value === undefined || value === null) return null;
     return (
-        <div className={`p-5 rounded-3xl ${bg} border ${border} flex flex-col items-center justify-center text-center`}>
+        <div className={`p-5 rounded-3xl ${bg} border ${border} flex flex-col items-center justify-center text-center relative`}>
+            {tip && (
+                <div className="absolute top-3 right-3">
+                    <Tooltip text={tip} />
+                </div>
+            )}
             <Icon className={`${color} mb-2`} size={24} />
             <span className="text-2xl font-black text-white tracking-tighter">{value}<span className="text-sm text-slate-400 tracking-normal ml-1">{unit}</span></span>
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-1">{label}</span>

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useGlobalState } from '../context/GlobalState';
 import { ChevronRight, Activity, FileText, Droplet, HeartPulse, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { ClinicalLabs } from '../types';
+import { Tooltip } from './Tooltip';
 
 interface Props {
     onBack: () => void;
@@ -111,13 +112,13 @@ export const ClinicalLabsScanner: React.FC<Props> = ({ onBack }) => {
                     )}
 
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        <LabCard label="Glucosa (Ayunas)" value={scannedData.fastingGlucose} unit="mg/dL" normalRange="< 100" icon={Droplet} />
-                        <LabCard label="HbA1c" value={scannedData.hba1c} unit="%" normalRange="< 5.7" icon={Activity} />
-                        <LabCard label="Triglicéridos" value={scannedData.triglycerides} unit="mg/dL" normalRange="< 150" icon={Droplet} />
-                        <LabCard label="Colesterol HDL" value={scannedData.hdl} unit="mg/dL" normalRange="> 40" icon={HeartPulse} />
-                        <LabCard label="Colesterol LDL" value={scannedData.ldl} unit="mg/dL" normalRange="< 100" icon={HeartPulse} />
-                        <LabCard label="TSH (Tiroides)" value={scannedData.tsh} unit="mIU/L" normalRange="0.4 - 4.0" icon={Activity} />
-                        <LabCard label="Ácido Úrico" value={scannedData.uricAcid} unit="mg/dL" normalRange="< 7.0" icon={Droplet} />
+                        <LabCard label="Glucosa (Ayunas)" value={scannedData.fastingGlucose} unit="mg/dL" normalRange="< 100" icon={Droplet} tip="Nivel de azúcar base tras 8 horas sin comer. Valores elevados sugieren prediabetes o resistencia a la insulina." />
+                        <LabCard label="HbA1c" value={scannedData.hba1c} unit="%" normalRange="< 5.7" icon={Activity} tip="Hemoglobina Glicosilada: Refleja tu promedio de glucosa en sangre de los últimos 3 meses." />
+                        <LabCard label="Triglicéridos" value={scannedData.triglycerides} unit="mg/dL" normalRange="< 150" icon={Droplet} tip="Grasas en la sangre. Paradójicamente, se elevan por un exceso de azúcares y harinas, no tanto por comer grasa." />
+                        <LabCard label="Colesterol HDL" value={scannedData.hdl} unit="mg/dL" normalRange="> 40" icon={HeartPulse} tip="Colesterol protector. Valores altos (>60) ayudan a limpiar las arterias y reducen el riesgo cardiovascular." />
+                        <LabCard label="Colesterol LDL" value={scannedData.ldl} unit="mg/dL" normalRange="< 100" icon={HeartPulse} tip="Colesterol asociado a formación de placa arterial. Su riesgo aumenta si también tienes triglicéridos altos." />
+                        <LabCard label="TSH (Tiroides)" value={scannedData.tsh} unit="mIU/L" normalRange="0.4 - 4.0" icon={Activity} tip="Hormona Estimulante de la Tiroides. Regula tu metabolismo; si está alta, tu metabolismo basal puede volverse lento." />
+                        <LabCard label="Ácido Úrico" value={scannedData.uricAcid} unit="mg/dL" normalRange="< 7.0" icon={Droplet} tip="Producido al metabolizar purinas. Niveles muy altos reflejan estrés metabólico y riesgo de gota." />
                     </div>
                 </div>
             )}
@@ -125,7 +126,7 @@ export const ClinicalLabsScanner: React.FC<Props> = ({ onBack }) => {
     );
 };
 
-const LabCard = ({ label, value, unit, normalRange, icon: Icon }: any) => {
+const LabCard = ({ label, value, unit, normalRange, icon: Icon, tip }: any) => {
     if (value === undefined || value === null) return null;
 
     // Basic heuristics for visual flags
@@ -141,7 +142,12 @@ const LabCard = ({ label, value, unit, normalRange, icon: Icon }: any) => {
     if (label.includes("HDL") && value < 40) { statusColor = "text-red-500"; bgLight = "bg-red-500/10"; borderStatus = "border-red-500/30"; StatusIcon = AlertCircle; }
 
     return (
-        <div className={`p-5 rounded-3xl ${bgLight} border ${borderStatus} relative overflow-hidden`}>
+        <div className={`p-5 rounded-3xl ${bgLight} border ${borderStatus} relative group`}>
+            {tip && (
+                <div className="absolute top-3 right-3 z-10">
+                    <Tooltip text={tip} />
+                </div>
+            )}
             <div className="flex justify-between items-start mb-4">
                 <Icon className={statusColor} size={20} />
                 <StatusIcon className={`${statusColor} opacity-50`} size={16} />

@@ -48,6 +48,8 @@ export type FoodGroup = 'Proteína' | 'Carbohidratos' | 'Grasas' | 'Vegetales' |
 export interface FoodEquivalent {
     id: string;
     name: string;
+    brand?: string;
+    ingredients?: string;
     group: FoodGroup;
     calories: number;
     macros: {

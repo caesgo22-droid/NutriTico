@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGlobalState } from '../context/GlobalState';
 import { Activity, Target, Zap, ChevronRight, ChevronLeft, ShieldCheck, HeartPulse } from 'lucide-react';
 import { UserProfile, Gender, ActivityLevel, Goal, Strategy, ClinicalCondition } from '../types';
+import { Tooltip } from '../components/Tooltip';
 
 export const Onboarding: React.FC = () => {
     const { state, dispatch } = useGlobalState();
@@ -172,10 +173,10 @@ export const Onboarding: React.FC = () => {
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Estrategia Clínica</label>
                                     <div className="grid grid-cols-2 gap-3">
                                         {[
-                                            { id: 'balanceado', l: 'Balanceado' },
-                                            { id: 'keto', l: 'Keto (Alta Grasa)' },
-                                            { id: 'ayuno_intermitente', l: 'Ayuno (IF)' },
-                                            { id: 'ciclado', l: 'Ciclado Carbs' }
+                                            { id: 'balanceado', l: 'Balanceado', tip: 'Equilibrio de macronutrientes (Ej. 40% Carbos, 30% Prot, 30% Grasa). Ideal para mantenimiento y salud general.' },
+                                            { id: 'keto', l: 'Keto (Alta Grasa)', tip: 'Cetosis metabólica mediante ingesta mínima de carbohidratos (< 5%) y alta en grasas saludables. Útil para recomposición rápida.' },
+                                            { id: 'ayuno_intermitente', l: 'Ayuno (IF)', tip: 'Restricción de la ventana de alimentación (Ej. 16/8). Optimiza la sensibilidad a la insulina y autofagia.' },
+                                            { id: 'ciclado', l: 'Ciclado Carbs', tip: 'Alternar días de altos/bajos carbohidratos según entrenamiento. Protege el músculo y acelera la quema de grasa.' }
                                         ].map(s => (
                                             <button
                                                 key={s.id}
@@ -186,9 +187,12 @@ export const Onboarding: React.FC = () => {
                                                         : [...localProfile.strategies, s.id as Strategy];
                                                     updateProfile({ strategies: next });
                                                 }}
-                                                className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${localProfile.strategies.includes(s.id as Strategy) ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 border-white/10 text-slate-500'}`}
+                                                className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-2 ${localProfile.strategies.includes(s.id as Strategy) ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 border-white/10 text-slate-500 hover:bg-white/10'}`}
                                             >
-                                                {s.l}
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-left">{s.l}</span>
+                                                <div onClick={e => e.stopPropagation()} className="shrink-0">
+                                                    <Tooltip text={s.tip} />
+                                                </div>
                                             </button>
                                         ))}
                                     </div>
@@ -198,9 +202,10 @@ export const Onboarding: React.FC = () => {
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Condiciones Médicas (DASH/ADA)</label>
                                     <div className="grid grid-cols-1 gap-2">
                                         {[
-                                            { id: 'Hypertension', l: 'Hipertensión' },
-                                            { id: 'Diabetes', l: 'Diabetes / Insulina' },
-                                            { id: 'MetabolicSyndrome', l: 'Síndrome Metabólico' }
+                                            { id: 'Hypertension', l: 'Hipertensión', tip: 'Enfoque clínico DASH: Bajo en sodio, rico en potasio para control vascular.' },
+                                            { id: 'Diabetes', l: 'Diabetes / Insulina', tip: 'Control estricto del índice glucémico y priorización de fibra.' },
+                                            { id: 'MetabolicSyndrome', l: 'Síndrome Metabólico', tip: 'Estrategia agresiva contra dislipidemia limitando azúcares y grasas saturadas.' },
+                                            { id: 'HighPerformance', l: 'Alto Rendimiento', tip: 'Optimización de glucógeno para atletas. Mayor carga energética limpia.' }
                                         ].map(c => (
                                             <button
                                                 key={c.id}
@@ -211,9 +216,14 @@ export const Onboarding: React.FC = () => {
                                                         : [...localProfile.conditions, c.id as ClinicalCondition];
                                                     updateProfile({ conditions: next });
                                                 }}
-                                                className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${localProfile.conditions.includes(c.id as ClinicalCondition) ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' : 'bg-white/5 border-white/10 text-slate-500'}`}
+                                                className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${localProfile.conditions.includes(c.id as ClinicalCondition) ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' : 'bg-white/5 border-white/10 text-slate-500 hover:bg-white/10'}`}
                                             >
-                                                <span className="font-black uppercase text-[10px] tracking-widest">{c.l}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-black uppercase text-[10px] tracking-widest">{c.l}</span>
+                                                    <div onClick={e => e.stopPropagation()} className="mt-0.5">
+                                                        <Tooltip text={c.tip} />
+                                                    </div>
+                                                </div>
                                                 {localProfile.conditions.includes(c.id as ClinicalCondition) && <ShieldCheck size={16} />}
                                             </button>
                                         ))}

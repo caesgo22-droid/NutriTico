@@ -15,6 +15,8 @@ module.exports = async function handler(req, res) {
             properties: {
                 id: { type: SchemaType.STRING, description: "Un identificador único corto generado como v_algo" },
                 name: { type: SchemaType.STRING },
+                brand: { type: SchemaType.STRING, description: "Marca del producto, si es visible" },
+                ingredients: { type: SchemaType.STRING, description: "Lista de ingredientes, si es legible" },
                 group: {
                     type: SchemaType.STRING,
                     enum: ['Proteína', 'Carbohidratos', 'Grasas', 'Vegetales', 'Frutas', 'Lácteos', 'Ultraprocesados', 'Otros']
@@ -52,14 +54,22 @@ module.exports = async function handler(req, res) {
             {
                 role: 'user',
                 parts: [
-                    ...images.map(data => ({ inlineData: { mimeType: 'image/jpeg', data } })),
-                    { text: prompt || 'Analiza este alimento.' }
+                    ...images.map(img => {
+                        const data = typeof img === 'string' ? img : img.data;
+                        const mimeType = img.mimeType || 'image/jpeg';
+                        return { inlineData: { mimeType, data } };
+                    }),
+                    { text: prompt || 'Analiza detalladamente las imágenes o documentos adjuntos (etiquetas, empaques, info nutricional) y extrae toda la información. Si hay múltiples imágenes, correlaciónalas.' }
                 ]
             }
         ];
 
         const result = await model.generateContent({ contents });
-        return res.status(200).json(JSON.parse(result.response.text()));
+        let text = result.response.text();
+        if (text.includes('```')) {
+            text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        }
+        return res.status(200).json(JSON.parse(text));
     } catch (error) {
         console.error('Vision API Error:', error);
         return res.status(500).json({ error: error.message });
