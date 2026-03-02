@@ -1,4 +1,7 @@
-const { GoogleGenAI, SchemaType } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 module.exports = async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -7,71 +10,65 @@ module.exports = async function handler(req, res) {
 
     try {
         const { images, prompt, stateString } = req.body;
-        const genAI = new GoogleGenAI(apiKey);
+        if (!images || images.length === 0) {
+            return res.status(400).json({ error: 'No images provided.' });
+        }
 
-        const schema = {
-            description: "Clasificación de un alimento o ingrediente para la Despensa",
-            type: SchemaType.OBJECT,
-            properties: {
-                id: { type: SchemaType.STRING, description: "Un identificador único corto generado como v_algo" },
-                name: { type: SchemaType.STRING },
-                brand: { type: SchemaType.STRING, description: "Marca del producto, si es visible" },
-                ingredients: { type: SchemaType.STRING, description: "Lista de ingredientes, si es legible" },
-                group: {
-                    type: SchemaType.STRING,
-                    enum: ['Proteína', 'Carbohidratos', 'Grasas', 'Vegetales', 'Frutas', 'Lácteos', 'Ultraprocesados', 'Otros']
-                },
-                calories: { type: SchemaType.NUMBER },
-                macros: {
-                    type: SchemaType.OBJECT,
-                    properties: { p: { type: SchemaType.NUMBER }, c: { type: SchemaType.NUMBER }, f: { type: SchemaType.NUMBER } }
-                },
-                equivalentPortion: { type: SchemaType.STRING, description: "Ej. '100g' o '1 Taza'" },
-                clinicalAdvice: { type: SchemaType.STRING, description: "Aviso clínico breve si no cumple con la estrategia del usuario" }
-            },
-            required: ["id", "name", "group", "calories", "macros", "equivalentPortion"]
-        };
+        const ai = new GoogleGenAI({ apiKey });
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash", // Option: Upgrade to 'gemini-1.5-pro' if latency is not an issue for Paid Tier
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: schema,
-                temperature: 0.1, // High precision
-            },
-            systemInstruction: `Eres el Auditor de Visión de NutriTico IA v3. 
-            
-            ESTÁNDARES DE CALIDAD (PAID TIER 1):
-            1. OCR EXTREMO: Si hay una etiqueta nutricional, extrae los datos exactos por 100g o por porción indicada. 
-            2. CLASIFICACIÓN GABSA: Clasifica el alimento estrictamente en los grupos de intercambio de Costa Rica (GABSA).
-            3. REGLA DE SEGURIDAD: Si el alimento es ultraprocesado o tiene ingredientes conflictivos (ej: exceso de sodio en hipertensos), dilo en 'clinicalAdvice'.
-            4. MULTI-DETECCIÓN: Si ves múltiples ingredientes, elige el más prominente o el que el usuario señale si hay texto en el prompt.
+        const systemPrompt = `Eres el Auditor de Visión de NutriTico IA v3.
 
-            Contexto del usuario (Biometría y Metas): ${stateString}`
+ESTÁNDARES DE CALIDAD:
+1. OCR EXTREMO: Si hay una etiqueta nutricional, extrae los datos exactos por 100g o por porción indicada.
+2. CLASIFICACIÓN GABSA: Clasifica el alimento estrictamente en los grupos de intercambio de Costa Rica.
+3. REGLA DE SEGURIDAD: Si el alimento es ultraprocesado o tiene ingredientes conflictivos, dilo en clinicalAdvice.
+4. Devuelve SOLAMENTE un objeto JSON puro con las claves: id, name, brand, ingredients, group, calories, macros (p/c/f), equivalentPortion, clinicalAdvice.
+5. group debe ser uno de: Proteína, Carbohidratos, Grasas, Vegetales, Frutas, Lácteos, Ultraprocesados, Otros.
+6. calories y macros deben ser números.
+7. NO incluyas bloques markdown, solo JSON puro.
+
+Contexto del usuario: ${stateString}`;
+
+        const contentParts = [{ text: systemPrompt + '\n\n' + (prompt || 'Analiza este alimento y extrae toda la información nutricional disponible.') }];
+
+        for (const img of images) {
+            const mimeType = img.mimeType || 'image/jpeg';
+            const base64Data = img.data;
+
+            if (mimeType === 'application/pdf') {
+                const tmpFile = path.join(os.tmpdir(), `pantry_${Date.now()}.pdf`);
+                fs.writeFileSync(tmpFile, Buffer.from(base64Data, 'base64'));
+
+                try {
+                    const uploaded = await ai.files.upload({
+                        file: tmpFile,
+                        config: { mimeType: 'application/pdf' }
+                    });
+                    contentParts.push({ fileData: { fileUri: uploaded.uri, mimeType: 'application/pdf' } });
+                } finally {
+                    fs.unlinkSync(tmpFile);
+                }
+            } else {
+                contentParts.push({ inlineData: { data: base64Data, mimeType } });
+            }
+        }
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: [{ role: 'user', parts: contentParts }]
         });
 
-        const contents = [
-            {
-                role: 'user',
-                parts: [
-                    ...images.map(img => {
-                        const data = typeof img === 'string' ? img : img.data;
-                        const mimeType = img.mimeType || 'image/jpeg';
-                        return { inlineData: { mimeType, data } };
-                    }),
-                    { text: prompt || 'Analiza detalladamente las imágenes o documentos adjuntos (etiquetas, empaques, info nutricional) y extrae toda la información. Si hay múltiples imágenes, correlaciónalas.' }
-                ]
-            }
-        ];
+        let text = response.text;
+        if (typeof text === 'function') text = text();
+        text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-        const result = await model.generateContent({ contents });
-        let text = result.response.text();
-        if (text.includes('```')) {
-            text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        }
-        return res.status(200).json(JSON.parse(text));
+        const result = JSON.parse(text);
+        if (!result.id) result.id = `v_${Date.now()}`;
+
+        return res.status(200).json(result);
+
     } catch (error) {
-        console.error('Vision API Error:', error);
-        return res.status(500).json({ error: error.message });
+        console.error('Vision API Error:', error?.message || error);
+        return res.status(500).json({ error: error?.message || 'Error processing image' });
     }
 };

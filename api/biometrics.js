@@ -1,4 +1,4 @@
-const { GoogleGenAI, SchemaType } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 
 module.exports = async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -7,60 +7,48 @@ module.exports = async function handler(req, res) {
 
     try {
         const { images } = req.body;
-        const genAI = new GoogleGenAI(apiKey);
-
-        const schema = {
-            type: SchemaType.OBJECT,
-            properties: {
-                bodyFatPercentage: { type: SchemaType.NUMBER, description: "Porcentaje de Grasa Corporal. Ej 15.2" },
-                muscleMassPercentage: { type: SchemaType.NUMBER, description: "Porcentaje de Masa Muscular." },
-                waterPercentage: { type: SchemaType.NUMBER, description: "Porcentaje de Agua o Hidratación Corporal." },
-                boneMass: { type: SchemaType.NUMBER, description: "Masa Ósea en KG." },
-                visceralFat: { type: SchemaType.NUMBER, description: "Nivel de Grasa Visceral (entero o decimal)." },
-                metabolicAge: { type: SchemaType.NUMBER, description: "Edad Metabólica." }
-            }
-        };
-
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: schema,
-            }
-        });
-
-        const prompt = `Eres un sistema OCR clínico especializado en biometría corporal.
-        Tu trabajo es extraer los siguientes datos biométricos de la imagen adjunta, la cual pertenece a una aplicación de báscula inteligente (ej. Cubitt, Garmin, Renpho, Xiaomi).
-        
-        REGLAS ESTRICTAS:
-        1. Devuelve SOLAMENTE el formato JSON especificado.
-        2. Extrae SOLO los números de los porcentajes o niveles (sin el signo % o kg).
-        3. Si un dato explícitamente no se encuentra en la pantalla, puedes omitirlo o enviar 0, pero haz tu mejor esfuerzo por inspeccionar toda la captura.`;
-
-        const parts = [prompt];
-        if (images && images.length > 0) {
-            images.forEach(img => {
-                const base64Data = img.includes('base64,') ? img.split('base64,')[1] : img;
-                parts.push({
-                    inlineData: {
-                        data: base64Data,
-                        mimeType: "image/jpeg"
-                    }
-                });
-            });
-        } else {
+        if (!images || images.length === 0) {
             return res.status(400).json({ error: 'No images provided for biometric OCR.' });
         }
 
-        const result = await model.generateContent(parts);
-        const responseText = result.response.text();
-        // Fallback cleanup in case of markdown wrappers despite standard config
-        const jsonMatch = responseText.replace(/```json\n?|\n?```/g, '').trim();
+        const ai = new GoogleGenAI({ apiKey });
 
-        res.status(200).json(JSON.parse(jsonMatch));
+        const systemPrompt = `Eres un sistema OCR clínico especializado en biometría corporal.
+Tu trabajo es extraer los datos biométricos de la imagen adjunta (pantalla de app de báscula inteligente: Cubitt, Garmin, Renpho, Xiaomi, etc).
+
+REGLAS ESTRICTAS:
+1. Devuelve SOLAMENTE un objeto JSON puro, sin bloques markdown.
+2. Las claves permitidas son: bodyFatPercentage, muscleMassPercentage, waterPercentage, boneMass, visceralFat, metabolicAge.
+3. Extrae SOLO los números (sin % o kg).
+4. Si un dato no se encuentra, omítelo del JSON.`;
+
+        const contentParts = [{ text: systemPrompt }];
+
+        images.forEach(img => {
+            const base64Data = typeof img === 'string'
+                ? img.replace(/^data:[^;]+;base64,/, '')
+                : img.data || img;
+            contentParts.push({
+                inlineData: {
+                    data: base64Data,
+                    mimeType: 'image/jpeg'
+                }
+            });
+        });
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: [{ role: 'user', parts: contentParts }]
+        });
+
+        let text = response.text;
+        if (typeof text === 'function') text = text();
+        text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+        res.status(200).json(JSON.parse(text));
 
     } catch (error) {
-        console.error('API Error (Biometrics):', error);
-        res.status(500).json({ error: 'Error processing biometric image' });
+        console.error('API Error (Biometrics):', error?.message || error);
+        res.status(500).json({ error: error?.message || 'Error processing biometric image' });
     }
-}
+};
